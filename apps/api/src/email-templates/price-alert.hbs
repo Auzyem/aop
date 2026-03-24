@@ -1,0 +1,28 @@
+{{#> base subject="Price Alert — {{txnId}} — LME Moved {{pct}}%"}}
+  {{#*inline "body"}}
+    <h2>LME Gold Price Alert</h2>
+    <p>A significant price movement has been detected for a transaction awaiting price lock. Immediate review may be required.</p>
+
+    <div class="stat-box">
+      <div class="label">Transaction Reference</div>
+      <div class="value" style="font-size:14px;font-family:monospace;">{{txnId}}</div>
+      <div class="label" style="margin-top:12px;">Price Movement</div>
+      <div class="value" style="color:{{#ifEq direction 'UP'}}#16A34A{{else}}#DC2626{{/ifEq}};">
+        {{#ifEq direction 'UP'}}▲{{else}}▼{{/ifEq}} {{pct}}%
+      </div>
+      <div class="label" style="margin-top:12px;">Previous Price</div>
+      <div class="value" style="font-size:16px;">{{oldPrice}} / troy oz</div>
+      <div class="label" style="margin-top:8px;">Current Price</div>
+      <div class="value" style="font-size:16px;">{{newPrice}} / troy oz</div>
+    </div>
+
+    <div class="alert-banner">
+      ⚠ Review this transaction and consider whether to lock the price at the current rate.
+    </div>
+
+    <p>Log in to the AOP Trade Desk to review and lock the price for this transaction.</p>
+
+    <hr class="divider" />
+    <p style="color:#888;font-size:13px;">Price alerts are triggered when LME gold prices move more than the configured threshold for open transactions.</p>
+  {{/inline}}
+{{/base}}

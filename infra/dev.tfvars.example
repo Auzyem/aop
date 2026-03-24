@@ -1,0 +1,35 @@
+# =============================================================================
+# AOP Terraform — dev workspace example variable file
+#
+# Copy to dev.tfvars and fill in real values before running:
+#   terraform workspace select dev
+#   terraform plan -var-file=dev.tfvars
+# =============================================================================
+
+aws_region   = "us-east-1"
+project_name = "aop"
+vpc_cidr     = "10.0.0.0/16"
+
+# DNS / TLS — must match an existing Route 53 hosted zone
+domain_name     = "dev.aop.example.com"
+route53_zone_id = "Z1234567890ABCDEF"
+
+# Alerting
+alert_email = "devops@example.com"
+
+# Container images — push to ECR first, then update these URIs
+api_container_image    = "123456789012.dkr.ecr.us-east-1.amazonaws.com/aop-api:latest"
+worker_container_image = "123456789012.dkr.ecr.us-east-1.amazonaws.com/aop-worker:latest"
+
+# ECS task sizing (dev: smaller to save cost)
+api_cpu    = 256
+api_memory = 512
+worker_cpu = 256
+worker_memory = 512
+
+# RDS (dev)
+db_instance_class       = "db.t3.medium"
+db_allocated_storage_gb = 20
+
+# ElastiCache (dev)
+redis_node_type = "cache.t3.micro"

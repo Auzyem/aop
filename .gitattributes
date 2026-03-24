@@ -1,0 +1,21 @@
+# Force LF line endings in the repository regardless of the developer's OS.
+# This prevents "LF will be replaced by CRLF" noise on Windows and ensures
+# Docker images always get LF-terminated files.
+
+* text=auto eol=lf
+
+# Binary files — never touch line endings
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.gif binary
+*.ico binary
+*.pdf binary
+*.woff binary
+*.woff2 binary
+*.ttf binary
+*.eot binary
+*.zip binary
+
+# Terraform lock file should not be converted
+.terraform.lock.hcl -text

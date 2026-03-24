@@ -1,0 +1,27 @@
+{
+  "$schema": "https://json.schemastore.org/tsconfig",
+  "compilerOptions": {
+    "strict": true,
+    "target": "ES2022",
+    "lib": ["ES2022"],
+    "module": "NodeNext",
+    "moduleResolution": "NodeNext",
+    "esModuleInterop": true,
+    "skipLibCheck": true,
+    "forceConsistentCasingInFileNames": true,
+    "resolveJsonModule": true,
+    "declaration": true,
+    "declarationMap": true,
+    "sourceMap": true,
+    "incremental": true,
+    "paths": {
+      "@aop/db": ["./packages/db/src/index.ts"],
+      "@aop/db/*": ["./packages/db/src/*"],
+      "@aop/types": ["./packages/types/src/index.ts"],
+      "@aop/types/*": ["./packages/types/src/*"],
+      "@aop/utils": ["./packages/utils/src/index.ts"],
+      "@aop/utils/*": ["./packages/utils/src/*"]
+    }
+  },
+  "exclude": ["node_modules", "dist", ".next", "coverage"]
+}

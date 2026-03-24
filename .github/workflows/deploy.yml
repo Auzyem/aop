@@ -1,0 +1,379 @@
+name: Deploy
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: 'Target environment'
+        required: true
+        type: choice
+        options: [staging, production]
+        default: staging
+      image_tag:
+        description: 'Image tag to deploy (defaults to latest)'
+        required: false
+        default: latest
+
+concurrency:
+  group: deploy-${{ github.event.inputs.environment || 'staging' }}
+  cancel-in-progress: false # Never cancel in-flight deployments
+
+env:
+  AWS_REGION: ${{ secrets.AWS_REGION }}
+
+jobs:
+  # ---------------------------------------------------------------------------
+  # Deploy to Staging (auto on push to main)
+  # ---------------------------------------------------------------------------
+  deploy-staging:
+    name: Deploy → Staging
+    runs-on: ubuntu-latest
+    environment: staging
+    if: github.ref == 'refs/heads/main'
+    permissions:
+      id-token: write
+      contents: read
+
+    env:
+      IMAGE_TAG: ${{ github.event.inputs.image_tag || github.sha }}
+      ECS_CLUSTER: ${{ secrets.STAGING_ECS_CLUSTER }}
+      API_SERVICE: ${{ secrets.STAGING_API_SERVICE }}
+      WEB_SERVICE: ${{ secrets.STAGING_WEB_SERVICE }}
+      WORKER_SERVICE: ${{ secrets.STAGING_WORKER_SERVICE }}
+      STAGING_URL: ${{ secrets.STAGING_URL }}
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Configure AWS credentials (OIDC)
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ secrets.AWS_DEPLOY_ROLE_ARN }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Login to Amazon ECR
+        id: login-ecr
+        uses: aws-actions/amazon-ecr-login@v2
+
+      - name: Snapshot RDS before migration — staging
+        run: |
+          SNAPSHOT_ID="pre-deploy-${{ env.IMAGE_TAG }}-$(date +%Y%m%d%H%M%S)"
+          echo "Creating RDS snapshot: $SNAPSHOT_ID"
+          aws rds create-db-snapshot \
+            --db-instance-identifier ${{ secrets.STAGING_RDS_INSTANCE_ID }} \
+            --db-snapshot-identifier "$SNAPSHOT_ID" \
+            --tags Key=DeployTag,Value=${{ env.IMAGE_TAG }} Key=Environment,Value=staging
+          echo "Snapshot triggered (async) — proceeding with migration"
+        continue-on-error: false
+
+      - name: Run DB migrations
+        run: |
+          # Run migrations via ECS task (one-off migration container)
+          TASK_DEF=$(aws ecs describe-task-definition \
+            --task-definition ${{ secrets.STAGING_MIGRATION_TASK_DEF }} \
+            --query 'taskDefinition.taskDefinitionArn' \
+            --output text)
+
+          TASK_ARN=$(aws ecs run-task \
+            --cluster ${{ env.ECS_CLUSTER }} \
+            --task-definition $TASK_DEF \
+            --launch-type FARGATE \
+            --network-configuration "${{ secrets.STAGING_NETWORK_CONFIG }}" \
+            --overrides '{
+              "containerOverrides": [{
+                "name": "api",
+                "command": ["node", "-e", "require(\"./node_modules/@prisma/client\"); const { execSync } = require(\"child_process\"); execSync(\"npx prisma migrate deploy\", { stdio: \"inherit\" });"]
+              }]
+            }' \
+            --query 'tasks[0].taskArn' \
+            --output text)
+
+          echo "Migration task ARN: $TASK_ARN"
+          aws ecs wait tasks-stopped --cluster ${{ env.ECS_CLUSTER }} --tasks $TASK_ARN
+
+          EXIT_CODE=$(aws ecs describe-tasks \
+            --cluster ${{ env.ECS_CLUSTER }} \
+            --tasks $TASK_ARN \
+            --query 'tasks[0].containers[0].exitCode' \
+            --output text)
+
+          if [ "$EXIT_CODE" != "0" ]; then
+            echo "Migration task failed with exit code $EXIT_CODE"
+            exit 1
+          fi
+          echo "Migrations completed successfully"
+
+      - name: Force new deployment — API
+        run: |
+          aws ecs update-service \
+            --cluster ${{ env.ECS_CLUSTER }} \
+            --service ${{ env.API_SERVICE }} \
+            --force-new-deployment \
+            --query 'service.deployments[0].id' \
+            --output text
+
+      - name: Force new deployment — Web
+        run: |
+          aws ecs update-service \
+            --cluster ${{ env.ECS_CLUSTER }} \
+            --service ${{ env.WEB_SERVICE }} \
+            --force-new-deployment \
+            --query 'service.deployments[0].id' \
+            --output text
+
+      - name: Force new deployment — Worker
+        run: |
+          aws ecs update-service \
+            --cluster ${{ env.ECS_CLUSTER }} \
+            --service ${{ env.WORKER_SERVICE }} \
+            --force-new-deployment \
+            --query 'service.deployments[0].id' \
+            --output text
+
+      - name: Wait for services to stabilize
+        run: |
+          echo "Waiting for API service..."
+          aws ecs wait services-stable \
+            --cluster ${{ env.ECS_CLUSTER }} \
+            --services ${{ env.API_SERVICE }}
+
+          echo "Waiting for Web service..."
+          aws ecs wait services-stable \
+            --cluster ${{ env.ECS_CLUSTER }} \
+            --services ${{ env.WEB_SERVICE }}
+
+          echo "Waiting for Worker service..."
+          aws ecs wait services-stable \
+            --cluster ${{ env.ECS_CLUSTER }} \
+            --services ${{ env.WORKER_SERVICE }}
+
+      - name: Smoke tests — staging
+        run: |
+          # Health check
+          HTTP_STATUS=$(curl -s -o /dev/null -w "%{http_code}" ${{ env.STAGING_URL }}/health)
+          if [ "$HTTP_STATUS" != "200" ]; then
+            echo "Health check failed: HTTP $HTTP_STATUS"
+            exit 1
+          fi
+          echo "Health check passed (HTTP 200)"
+
+          # Version check
+          VERSION=$(curl -s ${{ env.STAGING_URL }}/health | jq -r '.version')
+          echo "Deployed version: $VERSION"
+
+          # Auth endpoint reachable
+          AUTH_STATUS=$(curl -s -o /dev/null -w "%{http_code}" \
+            -X POST ${{ env.STAGING_URL }}/api/v1/auth/login \
+            -H 'Content-Type: application/json' \
+            -d '{"email":"nonexistent@example.com","password":"test"}')
+          if [ "$AUTH_STATUS" != "401" ] && [ "$AUTH_STATUS" != "400" ]; then
+            echo "Auth endpoint unexpected status: HTTP $AUTH_STATUS"
+            exit 1
+          fi
+          echo "Auth endpoint reachable"
+
+      - name: Notify Slack — success
+        if: success()
+        uses: slackapi/slack-github-action@v1.26.0
+        with:
+          payload: |
+            {
+              "text": ":white_check_mark: *Staging deployed successfully*",
+              "attachments": [{
+                "color": "good",
+                "fields": [
+                  { "title": "Commit", "value": "${{ github.sha }}", "short": true },
+                  { "title": "Author", "value": "${{ github.actor }}", "short": true },
+                  { "title": "Branch", "value": "${{ github.ref_name }}", "short": true },
+                  { "title": "URL", "value": "${{ env.STAGING_URL }}", "short": true }
+                ]
+              }]
+            }
+        env:
+          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_DEPLOY_WEBHOOK }}
+          SLACK_WEBHOOK_TYPE: INCOMING_WEBHOOK
+
+      - name: Notify Slack — failure
+        if: failure()
+        uses: slackapi/slack-github-action@v1.26.0
+        with:
+          payload: |
+            {
+              "text": ":x: *Staging deployment FAILED*",
+              "attachments": [{
+                "color": "danger",
+                "fields": [
+                  { "title": "Commit", "value": "${{ github.sha }}", "short": true },
+                  { "title": "Author", "value": "${{ github.actor }}", "short": true },
+                  { "title": "Workflow", "value": "${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}", "short": false }
+                ]
+              }]
+            }
+        env:
+          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_DEPLOY_WEBHOOK }}
+          SLACK_WEBHOOK_TYPE: INCOMING_WEBHOOK
+
+  # ---------------------------------------------------------------------------
+  # Deploy to Production (manual trigger with approval gate)
+  # ---------------------------------------------------------------------------
+  deploy-production:
+    name: Deploy → Production
+    runs-on: ubuntu-latest
+    environment: production # GitHub environment requires manual approval
+    if: |
+      github.ref == 'refs/heads/main' &&
+      (github.event_name == 'workflow_dispatch' && github.event.inputs.environment == 'production')
+    needs: [deploy-staging]
+    permissions:
+      id-token: write
+      contents: read
+
+    env:
+      IMAGE_TAG: ${{ github.event.inputs.image_tag || github.sha }}
+      ECS_CLUSTER: ${{ secrets.PROD_ECS_CLUSTER }}
+      API_SERVICE: ${{ secrets.PROD_API_SERVICE }}
+      WEB_SERVICE: ${{ secrets.PROD_WEB_SERVICE }}
+      WORKER_SERVICE: ${{ secrets.PROD_WORKER_SERVICE }}
+      PROD_URL: ${{ secrets.PROD_URL }}
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Configure AWS credentials (OIDC)
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ secrets.AWS_PROD_DEPLOY_ROLE_ARN }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Login to Amazon ECR
+        id: login-ecr
+        uses: aws-actions/amazon-ecr-login@v2
+
+      - name: Snapshot RDS before migration — production
+        run: |
+          SNAPSHOT_ID="pre-deploy-${{ env.IMAGE_TAG }}-$(date +%Y%m%d%H%M%S)"
+          echo "Creating RDS snapshot: $SNAPSHOT_ID"
+          aws rds create-db-snapshot \
+            --db-instance-identifier ${{ secrets.PROD_RDS_INSTANCE_ID }} \
+            --db-snapshot-identifier "$SNAPSHOT_ID" \
+            --tags Key=DeployTag,Value=${{ env.IMAGE_TAG }} Key=Environment,Value=production
+          echo "Waiting for snapshot to be available..."
+          aws rds wait db-snapshot-available \
+            --db-snapshot-identifier "$SNAPSHOT_ID"
+          echo "Snapshot ready: $SNAPSHOT_ID"
+        continue-on-error: false
+
+      - name: Run DB migrations — production
+        run: |
+          TASK_DEF=$(aws ecs describe-task-definition \
+            --task-definition ${{ secrets.PROD_MIGRATION_TASK_DEF }} \
+            --query 'taskDefinition.taskDefinitionArn' \
+            --output text)
+
+          TASK_ARN=$(aws ecs run-task \
+            --cluster ${{ env.ECS_CLUSTER }} \
+            --task-definition $TASK_DEF \
+            --launch-type FARGATE \
+            --network-configuration "${{ secrets.PROD_NETWORK_CONFIG }}" \
+            --query 'tasks[0].taskArn' \
+            --output text)
+
+          echo "Migration task ARN: $TASK_ARN"
+          aws ecs wait tasks-stopped --cluster ${{ env.ECS_CLUSTER }} --tasks $TASK_ARN
+
+          EXIT_CODE=$(aws ecs describe-tasks \
+            --cluster ${{ env.ECS_CLUSTER }} \
+            --tasks $TASK_ARN \
+            --query 'tasks[0].containers[0].exitCode' \
+            --output text)
+
+          if [ "$EXIT_CODE" != "0" ]; then
+            echo "Migration task failed with exit code $EXIT_CODE"
+            exit 1
+          fi
+          echo "Migrations completed successfully"
+
+      - name: Force new deployment — API
+        run: |
+          aws ecs update-service \
+            --cluster ${{ env.ECS_CLUSTER }} \
+            --service ${{ env.API_SERVICE }} \
+            --force-new-deployment
+
+      - name: Force new deployment — Web
+        run: |
+          aws ecs update-service \
+            --cluster ${{ env.ECS_CLUSTER }} \
+            --service ${{ env.WEB_SERVICE }} \
+            --force-new-deployment
+
+      - name: Force new deployment — Worker
+        run: |
+          aws ecs update-service \
+            --cluster ${{ env.ECS_CLUSTER }} \
+            --service ${{ env.WORKER_SERVICE }} \
+            --force-new-deployment
+
+      - name: Wait for services to stabilize
+        run: |
+          aws ecs wait services-stable \
+            --cluster ${{ env.ECS_CLUSTER }} \
+            --services ${{ env.API_SERVICE }}
+          aws ecs wait services-stable \
+            --cluster ${{ env.ECS_CLUSTER }} \
+            --services ${{ env.WEB_SERVICE }}
+          aws ecs wait services-stable \
+            --cluster ${{ env.ECS_CLUSTER }} \
+            --services ${{ env.WORKER_SERVICE }}
+
+      - name: Health check — production
+        run: |
+          HTTP_STATUS=$(curl -s -o /dev/null -w "%{http_code}" ${{ env.PROD_URL }}/health)
+          if [ "$HTTP_STATUS" != "200" ]; then
+            echo "Production health check failed: HTTP $HTTP_STATUS"
+            exit 1
+          fi
+          VERSION=$(curl -s ${{ env.PROD_URL }}/health | jq -r '.version')
+          echo "Production health check passed — version: $VERSION"
+
+      - name: Notify Slack — production deployed
+        if: success()
+        uses: slackapi/slack-github-action@v1.26.0
+        with:
+          payload: |
+            {
+              "text": ":rocket: *Production deployed successfully*",
+              "attachments": [{
+                "color": "good",
+                "fields": [
+                  { "title": "Commit", "value": "${{ github.sha }}", "short": true },
+                  { "title": "Deployed by", "value": "${{ github.actor }}", "short": true },
+                  { "title": "URL", "value": "${{ env.PROD_URL }}", "short": true }
+                ]
+              }]
+            }
+        env:
+          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_DEPLOY_WEBHOOK }}
+          SLACK_WEBHOOK_TYPE: INCOMING_WEBHOOK
+
+      - name: Notify Slack — production failure
+        if: failure()
+        uses: slackapi/slack-github-action@v1.26.0
+        with:
+          payload: |
+            {
+              "text": ":fire: *PRODUCTION DEPLOYMENT FAILED — immediate action required*",
+              "attachments": [{
+                "color": "danger",
+                "fields": [
+                  { "title": "Commit", "value": "${{ github.sha }}", "short": true },
+                  { "title": "Deployed by", "value": "${{ github.actor }}", "short": true },
+                  { "title": "Workflow run", "value": "${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}", "short": false }
+                ]
+              }]
+            }
+        env:
+          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_DEPLOY_WEBHOOK }}
+          SLACK_WEBHOOK_TYPE: INCOMING_WEBHOOK

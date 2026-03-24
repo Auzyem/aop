@@ -1,0 +1,32 @@
+{{#> base subject="SLA BREACH — {{txnId}} — {{phase}} — {{daysOverdue}} days overdue"}}
+  {{#*inline "body"}}
+    <div class="danger-banner">
+      🚨 <strong>SLA BREACH — Immediate Action Required</strong>
+    </div>
+
+    <h2>SLA Breach Alert</h2>
+    <p>A transaction has exceeded its SLA target for the current phase. This requires immediate attention to avoid further delays and client impact.</p>
+
+    <div class="stat-box">
+      <div class="label">Transaction Reference</div>
+      <div class="value" style="font-size:14px;font-family:monospace;">{{txnId}}</div>
+      <div class="label" style="margin-top:12px;">Breached Phase</div>
+      <div class="value">{{upper phase}}</div>
+      <div class="label" style="margin-top:12px;">Phase Entered</div>
+      <div class="value" style="font-size:14px;">{{enteredAt}}</div>
+      <div class="label" style="margin-top:12px;">Days Overdue</div>
+      <div class="value" style="color:#DC2626;">{{daysOverdue}} days</div>
+    </div>
+
+    <p><strong>Required actions:</strong></p>
+    <ol>
+      <li>Review the transaction immediately in the AOP Operations Portal.</li>
+      <li>Identify the root cause of the delay.</li>
+      <li>Contact the responsible party (agent, refinery, or client) to expedite.</li>
+      <li>Document the reason for the delay in the transaction notes.</li>
+    </ol>
+
+    <hr class="divider" />
+    <p style="color:#888;font-size:13px;">SLA breaches are automatically flagged in the compliance audit trail. Repeated breaches may affect agent performance scores.</p>
+  {{/inline}}
+{{/base}}

@@ -1,0 +1,21 @@
+{{#> base subject="Your Settlement Statement — {{txnId}}"}}
+  {{#*inline "body"}}
+    <h2>Settlement Statement</h2>
+    <p>Dear <strong>{{clientName}}</strong>,</p>
+    <p>Your gold transaction has been settled. Please find your settlement summary below. A detailed PDF statement is attached to this email for your records.</p>
+
+    <div class="stat-box">
+      <div class="label">Transaction Reference</div>
+      <div class="value" style="font-size:14px;font-family:monospace;">{{txnId}}</div>
+      <div class="label" style="margin-top:12px;">Net Remittance (USD)</div>
+      <div class="value">{{netRemittanceUsd}}</div>
+    </div>
+
+    <p>The net remittance amount has been (or will be) transferred to your registered bank account. Please refer to the attached PDF for a full breakdown of gross proceeds, costs, fees, and net payable.</p>
+
+    <p>If you have any questions about your settlement, please contact your assigned agent or our finance team.</p>
+
+    <hr class="divider" />
+    <p style="color:#888;font-size:13px;">Please retain this statement and the attached PDF for your financial records and tax purposes.</p>
+  {{/inline}}
+{{/base}}

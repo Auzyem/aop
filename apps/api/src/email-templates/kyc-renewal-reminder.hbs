@@ -1,0 +1,29 @@
+{{#> base subject="KYC Renewal Required — Action Required"}}
+  {{#*inline "body"}}
+    <h2>KYC Renewal Required</h2>
+    <p>Dear <strong>{{clientName}}</strong>,</p>
+    <p>Your KYC verification is approaching its expiry date. To continue operating on the Aurum Operations Platform without interruption, please renew your KYC documentation.</p>
+
+    <div class="stat-box">
+      <div class="label">Days Remaining</div>
+      <div class="value">{{daysRemaining}} days</div>
+      <div class="label" style="margin-top:8px;">Renewal Deadline</div>
+      <div class="value" style="font-size:16px;">{{renewalDeadline}}</div>
+    </div>
+
+    {{#if (ifEq daysRemaining 0)}}
+      <div class="danger-banner">
+        ⚠ Your KYC has expired. Your account has been restricted. Please renew immediately.
+      </div>
+    {{else}}
+      <div class="alert-banner">
+        ⏰ Please renew before <strong>{{renewalDeadline}}</strong> to avoid service interruption.
+      </div>
+    {{/if}}
+
+    <p>To renew your KYC, log in to the AOP Portal and navigate to <strong>Profile → KYC Documents</strong>.</p>
+
+    <hr class="divider" />
+    <p style="color:#888;font-size:13px;">Failure to renew KYC by the deadline will result in account suspension until verification is complete.</p>
+  {{/inline}}
+{{/base}}

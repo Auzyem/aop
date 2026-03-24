@@ -1,0 +1,23 @@
+{{#> base subject="Disbursement Approved — Aurum Operations Platform"}}
+  {{#*inline "body"}}
+    <h2>Disbursement Approved</h2>
+    <p>Dear <strong>{{agentName}}</strong>,</p>
+    <p>Your disbursement request has been <strong style="color:#16A34A;">approved</strong> and will be processed shortly. Please find the details below.</p>
+
+    <div class="stat-box">
+      <div class="label">Amount (USD)</div>
+      <div class="value">{{amount}}</div>
+      <div class="label" style="margin-top:12px;">Tranche Number</div>
+      <div class="value" style="font-size:16px;">#{{trancheNo}}</div>
+      <div class="label" style="margin-top:12px;">Transaction Reference</div>
+      <div class="value" style="font-size:14px;font-family:monospace;">{{txnId}}</div>
+    </div>
+
+    <p>The funds will be transferred to your registered bank account within 1–2 business days. You will receive a payment confirmation once the transfer is initiated.</p>
+
+    <p>Please upload your receipt once you confirm receipt of funds. Log in to the AOP Agent Portal and navigate to <strong>Disbursements</strong> to upload your receipt.</p>
+
+    <hr class="divider" />
+    <p style="color:#888;font-size:13px;">If you do not receive the funds within 3 business days, please contact your operations manager.</p>
+  {{/inline}}
+{{/base}}

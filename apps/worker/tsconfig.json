@@ -1,0 +1,13 @@
+{
+  "extends": "../../tsconfig.json",
+  "compilerOptions": {
+    "outDir": "dist",
+    "noEmit": true,
+    "paths": {
+      "@aop/db": ["../../packages/db/src/index.ts"],
+      "@aop/utils": ["../../packages/utils/src/index.ts"],
+      "@aop/types": ["../../packages/types/src/index.ts"]
+    }
+  },
+  "include": ["src", "../../packages/*/src"]
+}

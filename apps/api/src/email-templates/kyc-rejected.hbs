@@ -1,0 +1,24 @@
+{{#> base subject="KYC Application — Action Required"}}
+  {{#*inline "body"}}
+    <h2>KYC Application — Action Required</h2>
+    <p>Dear <strong>{{clientName}}</strong>,</p>
+    <p>We have reviewed your KYC application and unfortunately are unable to approve it at this time. Please review the details below and resubmit the required documentation.</p>
+
+    <div class="danger-banner">
+      <strong>⚠ Reason for rejection:</strong><br />
+      {{reason}}
+    </div>
+
+    <p><strong>What to do next:</strong></p>
+    <ol>
+      <li>Review the rejection reason above carefully.</li>
+      <li>Gather the correct or updated documentation.</li>
+      <li>Log in to the AOP Portal and resubmit your KYC application.</li>
+    </ol>
+
+    <p>If you believe this decision is incorrect or need assistance, please contact us at <a href="mailto:{{supportEmail}}">{{supportEmail}}</a>.</p>
+
+    <hr class="divider" />
+    <p style="color:#888;font-size:13px;">Your account access is restricted until KYC is approved. Pending transactions are paused.</p>
+  {{/inline}}
+{{/base}}

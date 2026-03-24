@@ -1,0 +1,16 @@
+{
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    "module": "CommonJS",
+    "moduleResolution": "Node",
+    "esModuleInterop": true,
+    "rootDir": "../..",
+    "noEmit": true,
+    "paths": {
+      "@aop/db": ["../../packages/db/src/index.ts"],
+      "@aop/types": ["../../packages/types/src/index.ts"],
+      "@aop/utils": ["../../packages/utils/src/index.ts"]
+    }
+  },
+  "include": ["src", "../../packages/*/src"]
+}

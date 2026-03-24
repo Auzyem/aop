@@ -1,0 +1,22 @@
+{{#> base subject="Transaction {{txnId}} Advanced to Phase {{phase}}"}}
+  {{#*inline "body"}}
+    <h2>Transaction Phase Update</h2>
+    <p>A transaction has been advanced to a new phase on the Aurum Operations Platform.</p>
+
+    <div class="stat-box">
+      <div class="label">Transaction Reference</div>
+      <div class="value" style="font-size:14px;font-family:monospace;">{{txnId}}</div>
+      <div class="label" style="margin-top:12px;">New Phase</div>
+      <div class="value">{{upper phase}}</div>
+      <div class="label" style="margin-top:12px;">Advanced At</div>
+      <div class="value" style="font-size:14px;">{{advancedAt}}</div>
+      <div class="label" style="margin-top:8px;">Advanced By</div>
+      <div class="value" style="font-size:14px;">{{advancedBy}}</div>
+    </div>
+
+    <p>Please review the transaction and complete any actions required for the new phase. Log in to the AOP Operations Portal to view full transaction details.</p>
+
+    <hr class="divider" />
+    <p style="color:#888;font-size:13px;">Phase transitions are logged and auditable. Contact your operations manager if you have questions about the required next steps.</p>
+  {{/inline}}
+{{/base}}

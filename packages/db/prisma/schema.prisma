@@ -1,0 +1,852 @@
+// =============================================================================
+// Aurum Operations Platform — Prisma Schema
+// PostgreSQL 15 · Prisma 5
+//
+// Naming conventions:
+//   - All table names: snake_case via @@map
+//   - All monetary Decimal fields: precision 20, scale 6
+//   - Relations with multiple paths from the same pair are named explicitly
+// =============================================================================
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// =============================================================================
+// ENUMS
+// =============================================================================
+
+enum UserRole {
+  SUPER_ADMIN
+  ADMIN
+  COMPLIANCE_OFFICER
+  TRADE_MANAGER
+  OPERATIONS
+  VIEWER
+}
+
+enum EntityType {
+  INDIVIDUAL
+  COMPANY
+  COOP
+}
+
+enum KycStatus {
+  PENDING
+  APPROVED
+  REJECTED
+  EXPIRED
+}
+
+enum SanctionsStatus {
+  CLEAR
+  HIT
+  POSSIBLE_MATCH
+  PENDING
+}
+
+enum RiskRating {
+  LOW
+  MEDIUM
+  HIGH
+  VERY_HIGH
+}
+
+/// Document types accepted for KYC purposes
+enum KycDocumentType {
+  NATIONAL_ID
+  PASSPORT
+  DRIVING_LICENCE
+  UTILITY_BILL
+  BANK_STATEMENT
+  MINING_LICENCE
+  BUSINESS_REGISTRATION
+  TAX_CERTIFICATE
+  COMPANY_CONSTITUTION
+  DIRECTOR_ID
+  BENEFICIAL_OWNER_DECLARATION
+  SOURCE_OF_FUNDS
+  PROOF_OF_ADDRESS
+  SANCTIONS_CHECK_REPORT
+  OTHER
+}
+
+enum KycRecordStatus {
+  PENDING
+  UNDER_REVIEW
+  APPROVED
+  REJECTED
+  EXPIRED
+}
+
+enum SanctionsOutcome {
+  CLEAR
+  HIT
+  POSSIBLE_MATCH
+}
+
+/// Represents the 7 operational phases of a gold export transaction
+enum TransactionPhase {
+  PHASE_1 // Client onboarding & KYC verification
+  PHASE_2 // Price lock & deal structuring
+  PHASE_3 // Logistics & collection
+  PHASE_4 // Refinery receipt & assay
+  PHASE_5 // Disbursement
+  PHASE_6 // Settlement & final payment
+  PHASE_7 // Regulatory reporting & file closure
+}
+
+enum TransactionStatus {
+  DRAFT
+  SUBMITTED
+  KYC_REVIEW
+  KYC_APPROVED
+  KYC_REJECTED
+  PRICE_LOCKED
+  LOGISTICS_PENDING
+  IN_TRANSIT
+  RECEIVED_AT_REFINERY
+  ASSAY_IN_PROGRESS
+  ASSAY_COMPLETE
+  DISBURSEMENT_PENDING
+  PARTIALLY_DISBURSED
+  DISBURSED
+  SETTLEMENT_PENDING
+  SETTLED
+  CANCELLED
+  ON_HOLD
+}
+
+/// All 15 document types that flow through the AOP platform
+enum DocumentType {
+  MINING_LICENCE
+  EXPORT_PERMIT
+  ASSAY_CERTIFICATE
+  PACKING_LIST
+  COMMERCIAL_INVOICE
+  BILL_OF_LADING
+  CERTIFICATE_OF_ORIGIN
+  CUSTOMS_DECLARATION
+  INSURANCE_CERTIFICATE
+  BANK_INSTRUCTION_LETTER
+  SETTLEMENT_STATEMENT
+  KYC_IDENTITY_DOCUMENT
+  AML_SCREENING_REPORT
+  DISBURSEMENT_RECEIPT
+  REGULATORY_FILING
+}
+
+enum DocumentApprovalStatus {
+  PENDING
+  APPROVED
+  REJECTED
+  SUPERSEDED
+}
+
+/// All 11 cost categories that can be itemised on a transaction
+enum CostCategory {
+  REFINING_CHARGE
+  ASSAY_FEE
+  EXPORT_LEVY
+  CUSTOMS_DUTY
+  FREIGHT
+  INSURANCE
+  BANK_CHARGES
+  AGENT_COMMISSION
+  LABORATORY_FEE
+  REGULATORY_FEE
+  MISCELLANEOUS
+}
+
+enum DisbursementStatus {
+  PENDING
+  APPROVED
+  SENT
+  FAILED
+  CANCELLED
+}
+
+enum RemittanceStatus {
+  PENDING
+  INITIATED
+  SENT
+  CONFIRMED
+  FAILED
+}
+
+enum LmePriceType {
+  AM_FIX
+  PM_FIX
+  SPOT
+  FORWARD
+}
+
+enum CostEstimateStatus {
+  DRAFT
+  SUBMITTED
+  APPROVED
+  REJECTED
+}
+
+enum DisbursementReceiptStatus {
+  PENDING
+  APPROVED
+  QUERIED
+}
+
+enum RegulatoryReportType {
+  MONTHLY_TRANSACTION
+  QUARTERLY_AML
+  ANNUAL_COMPLIANCE
+  SUSPICIOUS_ACTIVITY
+  LARGE_TRANSACTION
+  AD_HOC
+  POST_TRANSACTION_AUDIT
+  OECD_DUE_DILIGENCE
+  CLIENT_KYC_STATUS
+  STR_DRAFT
+  PORTFOLIO_SUMMARY
+}
+
+enum ReportStatus {
+  GENERATING
+  READY
+  SUBMITTED
+  FAILED
+}
+
+// =============================================================================
+// MODELS
+// =============================================================================
+
+// -----------------------------------------------------------------------------
+// 1. User
+// -----------------------------------------------------------------------------
+model User {
+  id              String   @id @default(cuid())
+  email           String   @unique
+  passwordHash    String
+  role            UserRole @default(VIEWER)
+  countryCode     String   @db.Char(2)
+  agentId         String?
+  twoFactorSecret String?
+  isActive        Boolean  @default(true)
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  // Optional FK: user may belong to an agent organisation
+  agent Agent? @relation("UserAgent", fields: [agentId], references: [id])
+
+  // ── Relations as actor ────────────────────────────────────────────────────
+  kycRecordsUploaded      KycRecord[]         @relation("KycUploadedBy")
+  kycRecordsApproved      KycRecord[]         @relation("KycApprovedBy")
+  sanctionsScreenings     SanctionsScreening[] @relation("SanctionsScreenedBy")
+  transactionsCreated     Transaction[]        @relation("TransactionCreatedBy")
+  transactionsPriceLocked Transaction[]        @relation("TransactionPriceLocked")
+  phaseHistoryEntries     PhaseHistory[]       @relation("PhaseEnteredBy")
+  documentsUploaded       Document[]           @relation("DocumentUploadedBy")
+  documentsApproved       Document[]           @relation("DocumentApprovedBy")
+  disbursementsApproved   Disbursement[]       @relation("DisbursementApprovedBy")
+  settlementsApproved     Settlement[]         @relation("SettlementApprovedBy")
+  auditEvents             AuditEvent[]         @relation("AuditEventUser")
+  reportsGenerated        RegulatoryReport[]   @relation("ReportGeneratedBy")
+  reportsSubmitted        RegulatoryReport[]   @relation("ReportSubmittedBy")
+  costEstimatesSubmitted  CostEstimate[]       @relation("CostEstimateSubmittedBy")
+  costEstimatesApproved   CostEstimate[]       @relation("CostEstimateApprovedBy")
+  costEstimatesRejected   CostEstimate[]       @relation("CostEstimateRejectedBy")
+  disbReceiptsUploaded    DisbursementReceipt[] @relation("ReceiptUploadedBy")
+  disbReceiptsReviewed    DisbursementReceipt[] @relation("ReceiptReviewedBy")
+  settingsUpdated         SystemSettings[]      @relation("SettingsUpdatedBy")
+
+  @@index([agentId])
+  @@index([role])
+  @@index([isActive])
+  @@map("users")
+}
+
+// -----------------------------------------------------------------------------
+// 5. Agent  (defined before Client / Transaction to satisfy FK ordering)
+// -----------------------------------------------------------------------------
+model Agent {
+  id                      String    @id @default(cuid())
+  companyName             String
+  countryCode             String    @db.Char(2)
+  contactName             String
+  contactEmail            String?
+  licenceNo               String    @unique
+  kycStatus               KycStatus @default(PENDING)
+  bankName                String?
+  bankAccount             String?
+  swiftBic                String?
+  /// Fraction of uploads accepted first time (no rejections), 0.00–1.00
+  docAccuracyScore        Decimal?  @db.Decimal(5, 4)
+  /// Average days to complete Phase 4 (docs phase)
+  avgPhaseCompletionDays  Decimal?  @db.Decimal(6, 2)
+  /// Compliance health score 0.00–100.00
+  complianceScore         Decimal?  @db.Decimal(5, 2)
+  /// Weighted composite score 0.00–100.00
+  performanceScore        Decimal?  @db.Decimal(5, 2)
+  performanceScoredAt     DateTime?
+  isActive                Boolean   @default(true)
+  createdAt               DateTime  @default(now())
+
+  // Reverse relations
+  users         User[]         @relation("UserAgent")
+  clients       Client[]       @relation("ClientAgent")
+  transactions  Transaction[]  @relation("TransactionAgent")
+  disbursements Disbursement[] @relation("DisbursementAgent")
+
+  @@index([countryCode])
+  @@index([kycStatus])
+  @@index([isActive])
+  @@map("agents")
+}
+
+// -----------------------------------------------------------------------------
+// 2. Client
+// -----------------------------------------------------------------------------
+model Client {
+  id              String          @id @default(cuid())
+  fullName        String
+  entityType      EntityType
+  countryCode     String          @db.Char(2)
+  nationalId      String?
+  miningLicenceNo String?
+  businessRegNo   String?
+  kycStatus       KycStatus       @default(PENDING)
+  sanctionsStatus SanctionsStatus @default(PENDING)
+  riskRating      RiskRating      @default(MEDIUM)
+  isPEP           Boolean         @default(false)
+  isEDD           Boolean         @default(false)
+  assignedAgentId String?
+  /// Primary mobile number in E.164 format — used for SMS notifications
+  mobilePhone     String?
+  /// Whether the client has consented to SMS notifications
+  smsOptIn              Boolean   @default(false)
+  /// Set when a GDPR/POPIA data-deletion request is received; does not trigger auto-delete
+  deletionRequestedAt   DateTime?
+  createdAt             DateTime  @default(now())
+  updatedAt             DateTime  @updatedAt
+
+  assignedAgent       Agent?               @relation("ClientAgent", fields: [assignedAgentId], references: [id])
+  kycRecords          KycRecord[]          @relation("ClientKyc")
+  sanctionsScreenings SanctionsScreening[] @relation("ClientSanctions")
+  transactions        Transaction[]        @relation("ClientTransactions")
+  documents           Document[]           @relation("ClientDocuments")
+
+  @@index([assignedAgentId])
+  @@index([kycStatus])
+  @@index([sanctionsStatus])
+  @@index([riskRating])
+  @@index([countryCode])
+  @@index([isPEP])
+  @@map("clients")
+}
+
+// -----------------------------------------------------------------------------
+// 3. KYCRecord
+// -----------------------------------------------------------------------------
+model KycRecord {
+  id              String          @id @default(cuid())
+  clientId        String
+  documentType    KycDocumentType
+  fileUrl         String
+  uploadedBy      String
+  uploadedAt      DateTime        @default(now())
+  approvedBy      String?
+  approvedAt      DateTime?
+  status          KycRecordStatus @default(PENDING)
+  rejectionReason String?
+  retainUntil     DateTime?
+
+  client         Client @relation("ClientKyc", fields: [clientId], references: [id])
+  uploadedByUser User   @relation("KycUploadedBy", fields: [uploadedBy], references: [id])
+  approvedByUser User?  @relation("KycApprovedBy", fields: [approvedBy], references: [id])
+
+  @@index([clientId])
+  @@index([uploadedBy])
+  @@index([approvedBy])
+  @@index([status])
+  @@index([documentType])
+  @@map("kyc_records")
+}
+
+// -----------------------------------------------------------------------------
+// 4. SanctionsScreening
+// -----------------------------------------------------------------------------
+model SanctionsScreening {
+  id         String           @id @default(cuid())
+  clientId   String
+  provider   String
+  rawResult  Json
+  outcome    SanctionsOutcome
+  screenedAt DateTime         @default(now())
+  screenedBy String
+
+  client         Client @relation("ClientSanctions", fields: [clientId], references: [id])
+  screenedByUser User   @relation("SanctionsScreenedBy", fields: [screenedBy], references: [id])
+
+  @@index([clientId])
+  @@index([screenedBy])
+  @@index([outcome])
+  @@index([screenedAt])
+  @@map("sanctions_screenings")
+}
+
+// -----------------------------------------------------------------------------
+// 13. Refinery  (defined before Transaction)
+// -----------------------------------------------------------------------------
+model Refinery {
+  id                    String  @id @default(cuid())
+  name                  String
+  countryCode           String  @db.Char(2)
+  lbmaAccredited        Boolean @default(false)
+  contactEmail          String?
+  /// Expressed as a fraction, e.g. 0.0030 = 0.30%
+  refiningChargePercent Decimal @db.Decimal(10, 6)
+  assayFeeUsd           Decimal @db.Decimal(20, 6)
+
+  transactions Transaction[] @relation("RefineryTransactions")
+
+  @@index([countryCode])
+  @@index([lbmaAccredited])
+  @@map("refineries")
+}
+
+// -----------------------------------------------------------------------------
+// 6. Transaction
+// -----------------------------------------------------------------------------
+model Transaction {
+  // ID follows the format: AOP-{CC}-{YYYY}-{NNNN}  e.g. AOP-KE-2026-0001
+  // The application layer is responsible for generating this value before insert.
+  id                          String            @id
+  clientId                    String
+  agentId                     String
+  countryCode                 String            @db.Char(2)
+  phase                       TransactionPhase  @default(PHASE_1)
+  status                      TransactionStatus @default(DRAFT)
+  goldWeightGross             Decimal           @db.Decimal(20, 6)
+  goldWeightFine              Decimal?          @db.Decimal(20, 6)
+  /// Expressed as a fraction, e.g. 0.9999 = 99.99%
+  assayPurity                 Decimal?          @db.Decimal(10, 6)
+  lmePriceLocked              Decimal?          @db.Decimal(20, 6)
+  priceLockedAt               DateTime?
+  priceLockedBy               String?
+  assignedRefineryId          String?
+  /// Destination assay weight from Final Sale Confirmation document
+  goldWeightFineDestination   Decimal?          @db.Decimal(20, 6)
+  /// Set when |origin - destination| / origin > 0.5%
+  assayDiscrepancyFlag        Boolean           @default(false)
+  assayDiscrepancyPct         Decimal?          @db.Decimal(10, 6)
+  assayDiscrepancyNote        String?
+  createdBy                   String
+  createdAt                   DateTime          @default(now())
+  updatedAt                   DateTime          @updatedAt
+
+  client            Client       @relation("ClientTransactions", fields: [clientId], references: [id])
+  agent             Agent        @relation("TransactionAgent", fields: [agentId], references: [id])
+  priceLockedByUser User?        @relation("TransactionPriceLocked", fields: [priceLockedBy], references: [id])
+  refinery          Refinery?    @relation("RefineryTransactions", fields: [assignedRefineryId], references: [id])
+  createdByUser     User         @relation("TransactionCreatedBy", fields: [createdBy], references: [id])
+
+  phaseHistory  PhaseHistory[]  @relation("TransactionPhases")
+  documents     Document[]      @relation("TransactionDocuments")
+  costItems     CostItem[]      @relation("TransactionCosts")
+  costEstimate  CostEstimate?   @relation("TransactionCostEstimate")
+  disbursements Disbursement[]  @relation("TransactionDisbursements")
+  settlement    Settlement?     @relation("TransactionSettlement")
+  priceAlerts   PriceAlert[]    @relation("TransactionPriceAlerts")
+
+  @@index([clientId])
+  @@index([agentId])
+  @@index([status])
+  @@index([phase])
+  @@index([countryCode])
+  @@index([createdBy])
+  @@index([priceLockedBy])
+  @@index([assignedRefineryId])
+  @@index([createdAt])
+  @@map("transactions")
+}
+
+// -----------------------------------------------------------------------------
+// 7. PhaseHistory
+// -----------------------------------------------------------------------------
+model PhaseHistory {
+  id            String           @id @default(cuid())
+  transactionId String
+  phase         TransactionPhase
+  enteredAt     DateTime         @default(now())
+  exitedAt      DateTime?
+  enteredBy     String
+  notes         String?
+  slaBreach     Boolean          @default(false)
+
+  transaction   Transaction @relation("TransactionPhases", fields: [transactionId], references: [id])
+  enteredByUser User        @relation("PhaseEnteredBy", fields: [enteredBy], references: [id])
+
+  @@index([transactionId])
+  @@index([enteredBy])
+  @@index([phase])
+  @@index([slaBreach])
+  @@map("phase_history")
+}
+
+// -----------------------------------------------------------------------------
+// 8. Document
+// -----------------------------------------------------------------------------
+model Document {
+  id                String                 @id @default(cuid())
+  transactionId     String?
+  clientId          String?
+  documentType      DocumentType
+  filename          String
+  /// S3 object key — globally unique within the bucket
+  storageKey        String                 @unique
+  mimeType          String
+  sizeBytes         Int
+  uploadedBy        String
+  uploadedAt        DateTime               @default(now())
+  approvalStatus    DocumentApprovalStatus @default(PENDING)
+  approvedBy        String?
+  approvedAt        DateTime?
+  rejectionReason   String?
+  isSystemGenerated Boolean                @default(false)
+  version           Int                    @default(1)
+  retainUntil       DateTime?
+  /// Soft-delete flag — records are never physically removed
+  isDeleted         Boolean                @default(false)
+
+  transaction    Transaction? @relation("TransactionDocuments", fields: [transactionId], references: [id])
+  client         Client?      @relation("ClientDocuments", fields: [clientId], references: [id])
+  uploadedByUser User         @relation("DocumentUploadedBy", fields: [uploadedBy], references: [id])
+  approvedByUser User?        @relation("DocumentApprovedBy", fields: [approvedBy], references: [id])
+
+  @@index([transactionId])
+  @@index([clientId])
+  @@index([uploadedBy])
+  @@index([approvedBy])
+  @@index([documentType])
+  @@index([approvalStatus])
+  @@index([isDeleted])
+  @@map("documents")
+}
+
+// -----------------------------------------------------------------------------
+// 9. CostItem
+// -----------------------------------------------------------------------------
+model CostItem {
+  id               String       @id @default(cuid())
+  transactionId    String
+  category         CostCategory
+  estimatedUsd     Decimal?     @db.Decimal(20, 6)
+  actualUsd        Decimal?     @db.Decimal(20, 6)
+  /// ISO-4217 currency code of the original invoice
+  currencyOriginal String?      @db.Char(3)
+  amountOriginal   Decimal?     @db.Decimal(20, 6)
+  fxRate           Decimal?     @db.Decimal(20, 6)
+  receiptUrl       String?
+  notes            String?
+
+  transaction Transaction @relation("TransactionCosts", fields: [transactionId], references: [id])
+
+  @@index([transactionId])
+  @@index([category])
+  @@map("cost_items")
+}
+
+// -----------------------------------------------------------------------------
+// 10. Disbursement
+// -----------------------------------------------------------------------------
+model Disbursement {
+  id                String             @id @default(cuid())
+  transactionId     String
+  agentId           String
+  trancheNo         Int
+  amountUsd         Decimal            @db.Decimal(20, 6)
+  status            DisbursementStatus @default(PENDING)
+  instructionPdfUrl String?
+  bankRef           String?
+  requestedAt       DateTime           @default(now())
+  approvedBy        String?
+  approvedAt        DateTime?
+  sentAt            DateTime?
+
+  transaction    Transaction @relation("TransactionDisbursements", fields: [transactionId], references: [id])
+  agent          Agent       @relation("DisbursementAgent", fields: [agentId], references: [id])
+  approvedByUser User?       @relation("DisbursementApprovedBy", fields: [approvedBy], references: [id])
+
+  receipts DisbursementReceipt[] @relation("DisbursementReceipts")
+
+  /// Each tranche number must be unique per transaction
+  @@unique([transactionId, trancheNo])
+  @@index([transactionId])
+  @@index([agentId])
+  @@index([approvedBy])
+  @@index([status])
+  @@map("disbursements")
+}
+
+// -----------------------------------------------------------------------------
+// 11. Settlement
+// -----------------------------------------------------------------------------
+model Settlement {
+  id                      String           @id @default(cuid())
+  /// One settlement per transaction
+  transactionId           String           @unique
+  grossProceedsUsd        Decimal          @db.Decimal(20, 6)
+  actualCostsUsd          Decimal          @db.Decimal(20, 6) @default(0)
+  agentFeeUsd             Decimal          @db.Decimal(20, 6) @default(0)
+  totalDeductionsUsd      Decimal          @db.Decimal(20, 6)
+  companyFeeUsd           Decimal          @db.Decimal(20, 6)
+  /// Expressed as a fraction, e.g. 0.015000 = 1.5%
+  companyFeePercent       Decimal          @db.Decimal(10, 6)
+  netRemittanceUsd        Decimal          @db.Decimal(20, 6)
+  lmePriceUsed            Decimal          @db.Decimal(20, 6)
+  statementPdfUrl         String?
+  remittanceInstructionUrl String?
+  calculatedAt            DateTime?
+  notificationSentAt      DateTime?
+  approvedBy              String?
+  approvedAt              DateTime?
+  remittanceStatus        RemittanceStatus @default(PENDING)
+  remittanceSentAt        DateTime?
+  createdAt               DateTime         @default(now())
+  updatedAt               DateTime         @updatedAt
+
+  transaction    Transaction @relation("TransactionSettlement", fields: [transactionId], references: [id])
+  approvedByUser User?       @relation("SettlementApprovedBy", fields: [approvedBy], references: [id])
+
+  @@index([approvedBy])
+  @@index([remittanceStatus])
+  @@map("settlements")
+}
+
+// -----------------------------------------------------------------------------
+// 12. LMEPriceRecord
+// -----------------------------------------------------------------------------
+model LmePriceRecord {
+  id                String       @id @default(cuid())
+  priceUsdPerTroyOz Decimal      @db.Decimal(20, 6)
+  priceType         LmePriceType
+  source            String
+  recordedAt        DateTime
+
+  /// Price type + timestamp must be unique (no duplicate fixings for same session)
+  @@unique([recordedAt, priceType])
+  @@index([recordedAt])
+  @@index([priceType])
+  @@map("lme_price_records")
+}
+
+// -----------------------------------------------------------------------------
+// 13. PriceAlert
+// -----------------------------------------------------------------------------
+model PriceAlert {
+  id                String   @id @default(cuid())
+  transactionId     String
+  referencePriceUsd Decimal  @db.Decimal(20, 6)
+  newPriceUsd       Decimal  @db.Decimal(20, 6)
+  /// Absolute percentage change, e.g. 2.5 = 2.5%
+  changePct         Decimal  @db.Decimal(10, 6)
+  /// "UP" or "DOWN"
+  direction         String
+  exposureUsd       Decimal  @db.Decimal(20, 6)
+  emailSent         Boolean  @default(false)
+  alertedAt         DateTime @default(now())
+
+  transaction Transaction @relation("TransactionPriceAlerts", fields: [transactionId], references: [id])
+
+  @@index([transactionId])
+  @@index([alertedAt])
+  @@map("price_alerts")
+}
+
+// -----------------------------------------------------------------------------
+// 14. AuditEvent
+// -----------------------------------------------------------------------------
+model AuditEvent {
+  id         String   @id @default(cuid())
+  entityType String
+  entityId   String
+  action     String
+  oldValue   Json?
+  newValue   Json?
+  userId     String
+  ipAddress  String?
+  userAgent  String?
+  hmacSig    String?  // HMAC-SHA256 of entityType:entityId:action:userId:timestamp
+  createdAt  DateTime @default(now())
+
+  user User @relation("AuditEventUser", fields: [userId], references: [id])
+
+  @@index([entityType, entityId])
+  @@index([userId])
+  @@index([action])
+  @@index([createdAt])
+  @@map("audit_events")
+}
+
+// -----------------------------------------------------------------------------
+// 15. RegulatoryReport
+// -----------------------------------------------------------------------------
+model RegulatoryReport {
+  id          String               @id @default(cuid())
+  reportType  RegulatoryReportType
+  status      ReportStatus         @default(GENERATING)
+  periodStart DateTime
+  periodEnd   DateTime
+  generatedBy String
+  generatedAt DateTime             @default(now())
+  storageKey  String?
+  filePath    String?
+  submittedAt DateTime?
+  submittedBy String?
+  notes       String?
+
+  generatedByUser User  @relation("ReportGeneratedBy", fields: [generatedBy], references: [id])
+  submittedByUser User? @relation("ReportSubmittedBy", fields: [submittedBy], references: [id])
+  deliveryLogs    ReportDeliveryLog[]
+
+  @@index([reportType])
+  @@index([status])
+  @@index([periodStart, periodEnd])
+  @@index([generatedBy])
+  @@index([submittedBy])
+  @@map("regulatory_reports")
+}
+
+// -----------------------------------------------------------------------------
+// 15b. ReportDeliveryLog
+// Tracks each email delivery attempt for a generated report
+// -----------------------------------------------------------------------------
+model ReportDeliveryLog {
+  id             String    @id @default(cuid())
+  reportId       String
+  recipient      String
+  sentAt         DateTime?
+  deliveryStatus String    /// PENDING | SENT | FAILED
+  failureReason  String?
+  attempts       Int       @default(0)
+  createdAt      DateTime  @default(now())
+
+  report RegulatoryReport @relation(fields: [reportId], references: [id])
+
+  @@index([reportId])
+  @@index([deliveryStatus])
+  @@map("report_delivery_logs")
+}
+
+// -----------------------------------------------------------------------------
+// 16. CostEstimate
+// One per transaction — virtual aggregate of CostItems with approval workflow
+// -----------------------------------------------------------------------------
+model CostEstimate {
+  id              String              @id @default(cuid())
+  transactionId   String              @unique
+  status          CostEstimateStatus  @default(DRAFT)
+  totalEstimatedUsd Decimal           @db.Decimal(20, 6) @default(0)
+  totalActualUsd  Decimal             @db.Decimal(20, 6) @default(0)
+  submittedAt     DateTime?
+  submittedBy     String?
+  approvedAt      DateTime?
+  approvedBy      String?
+  rejectedAt      DateTime?
+  rejectedBy      String?
+  rejectionReason String?
+  updatedAt       DateTime            @updatedAt
+
+  transaction       Transaction @relation("TransactionCostEstimate", fields: [transactionId], references: [id])
+  submittedByUser   User?       @relation("CostEstimateSubmittedBy", fields: [submittedBy], references: [id])
+  approvedByUser    User?       @relation("CostEstimateApprovedBy", fields: [approvedBy], references: [id])
+  rejectedByUser    User?       @relation("CostEstimateRejectedBy", fields: [rejectedBy], references: [id])
+
+  @@index([transactionId])
+  @@index([status])
+  @@map("cost_estimates")
+}
+
+// -----------------------------------------------------------------------------
+// 17. DisbursementReceipt
+// Receipt documents uploaded by agents after disbursement is sent
+// -----------------------------------------------------------------------------
+model DisbursementReceipt {
+  id             String                    @id @default(cuid())
+  disbursementId String
+  storageKey     String                    @unique
+  filename       String
+  mimeType       String
+  sizeBytes      Int
+  status         DisbursementReceiptStatus @default(PENDING)
+  queryNote      String?
+  uploadedBy     String
+  uploadedAt     DateTime                  @default(now())
+  reviewedBy     String?
+  reviewedAt     DateTime?
+
+  disbursement   Disbursement @relation("DisbursementReceipts", fields: [disbursementId], references: [id])
+  uploadedByUser User         @relation("ReceiptUploadedBy", fields: [uploadedBy], references: [id])
+  reviewedByUser User?        @relation("ReceiptReviewedBy", fields: [reviewedBy], references: [id])
+
+  @@index([disbursementId])
+  @@index([uploadedBy])
+  @@index([status])
+  @@map("disbursement_receipts")
+}
+
+// -----------------------------------------------------------------------------
+// 19. FxRate
+// Daily FX rates persisted by the scheduled BullMQ job
+// -----------------------------------------------------------------------------
+model FxRate {
+  id        String   @id @default(cuid())
+  date      String   @db.Char(10) // YYYY-MM-DD
+  currency  String   @db.Char(3)
+  rateToUsd Decimal  @db.Decimal(20, 8)
+  fetchedAt DateTime @default(now())
+
+  @@unique([date, currency])
+  @@index([date])
+  @@map("fx_rates")
+}
+
+// -----------------------------------------------------------------------------
+// 20. EmailLog
+// Audit log of every email send attempt (success or failure)
+// -----------------------------------------------------------------------------
+model EmailLog {
+  id        String   @id @default(cuid())
+  toAddress String   // comma-separated when multiple recipients
+  subject   String
+  template  String?  // template name, null for ad-hoc emails
+  status    String   // SENT | FAILED | MOCK
+  messageId String?
+  error     String?
+  sentAt    DateTime @default(now())
+
+  @@index([status])
+  @@index([sentAt])
+  @@map("email_logs")
+}
+
+// -----------------------------------------------------------------------------
+// 18. SystemSettings
+// Key-value store for runtime-configurable platform parameters
+// -----------------------------------------------------------------------------
+model SystemSettings {
+  id          String   @id @default(cuid())
+  key         String   @unique
+  /// Stored as JSON — can be a number, string, array, or object
+  value       Json
+  updatedBy   String?
+  updatedAt   DateTime @updatedAt
+
+  updatedByUser User? @relation("SettingsUpdatedBy", fields: [updatedBy], references: [id])
+
+  @@map("system_settings")
+}
