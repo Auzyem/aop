@@ -13,7 +13,7 @@
 
 import { prisma } from '@aop/db';
 import { logger } from '@aop/utils';
-import type { User } from '@prisma/client';
+import type { User } from '@aop/db';
 
 // ---------------------------------------------------------------------------
 // Data subject access request — export all personal data for a client
@@ -27,28 +27,24 @@ export async function exportSubjectData(clientId: string, requestedBy: User) {
         select: {
           id: true,
           status: true,
-          submittedAt: true,
-          reviewedAt: true,
-          notes: true,
+          uploadedAt: true,
+          approvedAt: true,
         },
       },
       sanctionsScreenings: {
         select: {
           id: true,
-          status: true,
-          screened: true,
+          outcome: true,
+          screenedAt: true,
           provider: true,
-          rawResult: false, // exclude raw provider payload — may contain PII from 3rd party
-          notes: true,
         },
       },
       transactions: {
         select: {
           id: true,
-          referenceNo: true,
           phase: true,
-          weightGrams: true,
-          purityPercent: true,
+          goldWeightGross: true,
+          assayPurity: true,
           status: true,
           createdAt: true,
           updatedAt: true,
