@@ -47,7 +47,7 @@ export async function retentionReviewProcessor(_job: Job): Promise<void> {
       filename: true,
       retainUntil: true,
       uploadedAt: true,
-      transaction: { select: { id: true, referenceNo: true } },
+      transaction: { select: { id: true } },
       client: { select: { id: true, fullName: true } },
     },
     orderBy: { retainUntil: 'asc' },
@@ -83,7 +83,7 @@ export async function retentionReviewProcessor(_job: Job): Promise<void> {
         <td style="padding:6px 12px">${doc.id.slice(0, 8)}…</td>
         <td style="padding:6px 12px">${doc.documentType}</td>
         <td style="padding:6px 12px">${doc.client?.fullName ?? '—'}</td>
-        <td style="padding:6px 12px">${doc.transaction?.referenceNo ?? '—'}</td>
+        <td style="padding:6px 12px">${doc.transaction?.id ?? '—'}</td>
         <td style="padding:6px 12px">${doc.retainUntil?.toISOString().slice(0, 10) ?? '—'}</td>
       </tr>`,
       )
