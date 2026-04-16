@@ -30,6 +30,7 @@ const withPWA = withPWAInit({
 });
 
 const nextConfig: NextConfig = {
+  output: 'standalone',
   transpilePackages: ['@aop/types', '@aop/utils'],
   reactStrictMode: true,
   async rewrites() {
