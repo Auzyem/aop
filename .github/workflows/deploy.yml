@@ -69,18 +69,21 @@ jobs:
         continue-on-error: false
 
       - name: Run DB migrations
+        env:
+          NETWORK_CONFIG: ${{ secrets.STAGING_NETWORK_CONFIG }}
+          MIGRATION_TASK_DEF: ${{ secrets.STAGING_MIGRATION_TASK_DEF }}
         run: |
           # Run migrations via ECS task (one-off migration container)
           TASK_DEF=$(aws ecs describe-task-definition \
-            --task-definition ${{ secrets.STAGING_MIGRATION_TASK_DEF }} \
+            --task-definition "$MIGRATION_TASK_DEF" \
             --query 'taskDefinition.taskDefinitionArn' \
             --output text)
 
           TASK_ARN=$(aws ecs run-task \
             --cluster ${{ env.ECS_CLUSTER }} \
-            --task-definition $TASK_DEF \
+            --task-definition "$TASK_DEF" \
             --launch-type FARGATE \
-            --network-configuration "${{ secrets.STAGING_NETWORK_CONFIG }}" \
+            --network-configuration "$NETWORK_CONFIG" \
             --overrides '{
               "containerOverrides": [{
                 "name": "api",
@@ -176,6 +179,7 @@ jobs:
 
       - name: Notify Slack — success
         if: success()
+        continue-on-error: true
         uses: slackapi/slack-github-action@v1.26.0
         with:
           payload: |
@@ -197,6 +201,7 @@ jobs:
 
       - name: Notify Slack — failure
         if: failure()
+        continue-on-error: true
         uses: slackapi/slack-github-action@v1.26.0
         with:
           payload: |
@@ -266,17 +271,20 @@ jobs:
         continue-on-error: false
 
       - name: Run DB migrations — production
+        env:
+          NETWORK_CONFIG: ${{ secrets.PROD_NETWORK_CONFIG }}
+          MIGRATION_TASK_DEF: ${{ secrets.PROD_MIGRATION_TASK_DEF }}
         run: |
           TASK_DEF=$(aws ecs describe-task-definition \
-            --task-definition ${{ secrets.PROD_MIGRATION_TASK_DEF }} \
+            --task-definition "$MIGRATION_TASK_DEF" \
             --query 'taskDefinition.taskDefinitionArn' \
             --output text)
 
           TASK_ARN=$(aws ecs run-task \
             --cluster ${{ env.ECS_CLUSTER }} \
-            --task-definition $TASK_DEF \
+            --task-definition "$TASK_DEF" \
             --launch-type FARGATE \
-            --network-configuration "${{ secrets.PROD_NETWORK_CONFIG }}" \
+            --network-configuration "$NETWORK_CONFIG" \
             --query 'tasks[0].taskArn' \
             --output text)
 
@@ -340,6 +348,7 @@ jobs:
 
       - name: Notify Slack — production deployed
         if: success()
+        continue-on-error: true
         uses: slackapi/slack-github-action@v1.26.0
         with:
           payload: |
@@ -360,6 +369,7 @@ jobs:
 
       - name: Notify Slack — production failure
         if: failure()
+        continue-on-error: true
         uses: slackapi/slack-github-action@v1.26.0
         with:
           payload: |
