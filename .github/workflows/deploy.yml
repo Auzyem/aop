@@ -84,12 +84,7 @@ jobs:
             --task-definition "$TASK_DEF" \
             --launch-type FARGATE \
             --network-configuration "$NETWORK_CONFIG" \
-            --overrides '{
-              "containerOverrides": [{
-                "name": "api",
-                "command": ["node", "-e", "require(\"./node_modules/@prisma/client\"); const { execSync } = require(\"child_process\"); execSync(\"npx prisma migrate deploy\", { stdio: \"inherit\" });"]
-              }]
-            }' \
+            --overrides '{"containerOverrides":[]}' \
             --query 'tasks[0].taskArn' \
             --output text)
 
