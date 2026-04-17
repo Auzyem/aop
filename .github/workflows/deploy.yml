@@ -1,8 +1,12 @@
 name: Deploy
 
 on:
-  push:
+  # Trigger automatically only after CI builds and pushes images successfully
+  workflow_run:
+    workflows: ['CI']
+    types: [completed]
     branches: [main]
+  # Manual trigger for production deploys or re-deploys
   workflow_dispatch:
     inputs:
       environment:
@@ -25,19 +29,24 @@ env:
 
 jobs:
   # ---------------------------------------------------------------------------
-  # Deploy to Staging (auto on push to main)
+  # Deploy to Staging (auto after CI succeeds on main)
   # ---------------------------------------------------------------------------
   deploy-staging:
     name: Deploy → Staging
     runs-on: ubuntu-latest
     environment: staging
-    if: github.ref == 'refs/heads/main'
+    # workflow_run: only deploy when CI succeeded (not on failure/cancellation)
+    # workflow_dispatch: always run (manual re-deploy)
+    if: |
+      (github.event_name == 'workflow_run' && github.event.workflow_run.conclusion == 'success') ||
+      (github.event_name == 'workflow_dispatch')
     permissions:
       id-token: write
       contents: read
 
     env:
-      IMAGE_TAG: ${{ github.event.inputs.image_tag || github.sha }}
+      # workflow_run gives us the triggering commit SHA; workflow_dispatch uses input or current SHA
+      IMAGE_TAG: ${{ github.event.inputs.image_tag || github.event.workflow_run.head_sha || github.sha }}
       ECS_CLUSTER: ${{ secrets.STAGING_ECS_CLUSTER }}
       API_SERVICE: ${{ secrets.STAGING_API_SERVICE }}
       WEB_SERVICE: ${{ secrets.STAGING_WEB_SERVICE }}
@@ -46,6 +55,9 @@ jobs:
 
     steps:
       - uses: actions/checkout@v4
+        with:
+          # Check out the commit that CI built, not the deploy workflow's trigger commit
+          ref: ${{ github.event.workflow_run.head_sha || github.sha }}
 
       - name: Configure AWS credentials (OIDC)
         uses: aws-actions/configure-aws-credentials@v4
@@ -149,20 +161,16 @@ jobs:
 
       - name: Smoke tests — staging
         run: |
-          # Health check
-          HTTP_STATUS=$(curl -s -o /dev/null -w "%{http_code}" ${{ env.STAGING_URL }}/health)
+          # Health check — follow redirects (ALB redirects HTTP→HTTPS)
+          HTTP_STATUS=$(curl -sL -o /dev/null -w "%{http_code}" ${{ env.STAGING_URL }}/health)
           if [ "$HTTP_STATUS" != "200" ]; then
             echo "Health check failed: HTTP $HTTP_STATUS"
             exit 1
           fi
           echo "Health check passed (HTTP 200)"
 
-          # Version check
-          VERSION=$(curl -s ${{ env.STAGING_URL }}/health | jq -r '.version')
-          echo "Deployed version: $VERSION"
-
           # Auth endpoint reachable
-          AUTH_STATUS=$(curl -s -o /dev/null -w "%{http_code}" \
+          AUTH_STATUS=$(curl -sL -o /dev/null -w "%{http_code}" \
             -X POST ${{ env.STAGING_URL }}/api/v1/auth/login \
             -H 'Content-Type: application/json' \
             -d '{"email":"nonexistent@example.com","password":"test"}')
@@ -183,9 +191,8 @@ jobs:
               "attachments": [{
                 "color": "good",
                 "fields": [
-                  { "title": "Commit", "value": "${{ github.sha }}", "short": true },
+                  { "title": "Commit", "value": "${{ env.IMAGE_TAG }}", "short": true },
                   { "title": "Author", "value": "${{ github.actor }}", "short": true },
-                  { "title": "Branch", "value": "${{ github.ref_name }}", "short": true },
                   { "title": "URL", "value": "${{ env.STAGING_URL }}", "short": true }
                 ]
               }]
@@ -205,7 +212,7 @@ jobs:
               "attachments": [{
                 "color": "danger",
                 "fields": [
-                  { "title": "Commit", "value": "${{ github.sha }}", "short": true },
+                  { "title": "Commit", "value": "${{ env.IMAGE_TAG }}", "short": true },
                   { "title": "Author", "value": "${{ github.actor }}", "short": true },
                   { "title": "Workflow", "value": "${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}", "short": false }
                 ]
@@ -216,15 +223,13 @@ jobs:
           SLACK_WEBHOOK_TYPE: INCOMING_WEBHOOK
 
   # ---------------------------------------------------------------------------
-  # Deploy to Production (manual trigger with approval gate)
+  # Deploy to Production (manual trigger only — requires approval gate)
   # ---------------------------------------------------------------------------
   deploy-production:
     name: Deploy → Production
     runs-on: ubuntu-latest
     environment: production # GitHub environment requires manual approval
-    if: |
-      github.ref == 'refs/heads/main' &&
-      (github.event_name == 'workflow_dispatch' && github.event.inputs.environment == 'production')
+    if: github.event_name == 'workflow_dispatch' && github.event.inputs.environment == 'production'
     needs: [deploy-staging]
     permissions:
       id-token: write
@@ -333,13 +338,12 @@ jobs:
 
       - name: Health check — production
         run: |
-          HTTP_STATUS=$(curl -s -o /dev/null -w "%{http_code}" ${{ env.PROD_URL }}/health)
+          HTTP_STATUS=$(curl -sL -o /dev/null -w "%{http_code}" ${{ env.PROD_URL }}/health)
           if [ "$HTTP_STATUS" != "200" ]; then
             echo "Production health check failed: HTTP $HTTP_STATUS"
             exit 1
           fi
-          VERSION=$(curl -s ${{ env.PROD_URL }}/health | jq -r '.version')
-          echo "Production health check passed — version: $VERSION"
+          echo "Production health check passed"
 
       - name: Notify Slack — production deployed
         if: success()
@@ -352,7 +356,7 @@ jobs:
               "attachments": [{
                 "color": "good",
                 "fields": [
-                  { "title": "Commit", "value": "${{ github.sha }}", "short": true },
+                  { "title": "Commit", "value": "${{ env.IMAGE_TAG }}", "short": true },
                   { "title": "Deployed by", "value": "${{ github.actor }}", "short": true },
                   { "title": "URL", "value": "${{ env.PROD_URL }}", "short": true }
                 ]
@@ -373,7 +377,7 @@ jobs:
               "attachments": [{
                 "color": "danger",
                 "fields": [
-                  { "title": "Commit", "value": "${{ github.sha }}", "short": true },
+                  { "title": "Commit", "value": "${{ env.IMAGE_TAG }}", "short": true },
                   { "title": "Deployed by", "value": "${{ github.actor }}", "short": true },
                   { "title": "Workflow run", "value": "${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}", "short": false }
                 ]
