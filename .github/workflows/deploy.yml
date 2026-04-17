@@ -52,6 +52,7 @@ jobs:
       WEB_SERVICE: ${{ secrets.STAGING_WEB_SERVICE }}
       WORKER_SERVICE: ${{ secrets.STAGING_WORKER_SERVICE }}
       STAGING_URL: ${{ secrets.STAGING_URL }}
+      STAGING_API_URL: ${{ secrets.STAGING_API_URL }}
 
     steps:
       - uses: actions/checkout@v4
@@ -169,9 +170,9 @@ jobs:
           fi
           echo "Health check passed (HTTP 200)"
 
-          # Auth endpoint reachable
+          # Auth endpoint reachable (hits API service, not web)
           AUTH_STATUS=$(curl -sL -o /dev/null -w "%{http_code}" \
-            -X POST ${{ env.STAGING_URL }}/api/v1/auth/login \
+            -X POST ${{ env.STAGING_API_URL }}/api/v1/auth/login \
             -H 'Content-Type: application/json' \
             -d '{"email":"nonexistent@example.com","password":"test"}')
           if [ "$AUTH_STATUS" != "401" ] && [ "$AUTH_STATUS" != "400" ]; then
