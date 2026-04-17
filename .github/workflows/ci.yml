@@ -369,6 +369,8 @@ jobs:
           tags: |
             ${{ steps.login-ecr.outputs.registry }}/${{ secrets.ECR_WEB_REPO }}:${{ github.sha }}
             ${{ steps.login-ecr.outputs.registry }}/${{ secrets.ECR_WEB_REPO }}:latest
+          build-args: |
+            NEXT_PUBLIC_API_URL=https://api.asante.cc
           cache-from: type=gha
           cache-to: type=gha,mode=max
 

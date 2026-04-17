@@ -35,6 +35,11 @@ COPY apps/web/ ./apps/web/
 
 ENV NEXT_TELEMETRY_DISABLED=1
 
+# Bake the public API URL into the Next.js bundle at build time
+# (NEXT_PUBLIC_* vars are inlined by the compiler — must be set before `next build`)
+ARG NEXT_PUBLIC_API_URL
+ENV NEXT_PUBLIC_API_URL=$NEXT_PUBLIC_API_URL
+
 RUN pnpm --filter @aop/types build
 RUN pnpm --filter @aop/utils build
 RUN pnpm --filter @aop/web build
