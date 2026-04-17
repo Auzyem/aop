@@ -648,25 +648,25 @@ body("Environments gate which branch can deploy where and add a human approval s
 
 heading2("Create staging environment (auto-deploys from main)")
 code_block([
-    "gh api repos/Blaqlv/aop/environments/staging \\",
+    "gh api repos/Auzyem/aop/environments/staging \\",
     "  --method PUT \\",
     "  --field deployment_branch_policy='{\"protected_branches\":false,\"custom_branch_policies\":true}'",
     "",
-    "gh api repos/Blaqlv/aop/environments/staging/deployment-branch-policies \\",
+    "gh api repos/Auzyem/aop/environments/staging/deployment-branch-policies \\",
     "  --method POST \\",
     "  --field name=main",
 ])
 
 heading2("Create production environment (requires manual approval)")
 code_block([
-    "gh api repos/Blaqlv/aop/environments/production \\",
+    "gh api repos/Auzyem/aop/environments/production \\",
     "  --method PUT \\",
     "  --field deployment_branch_policy='{\"protected_branches\":true,\"custom_branch_policies\":false}'",
 ])
 
 heading2("Add required reviewers (must be done in the web UI)")
 for s in [
-    "1. Go to github.com/Blaqlv/aop → Settings → Environments → production",
+    "1. Go to github.com/Auzyem/aop → Settings → Environments → production",
     "2. Click Required reviewers → add yourself (and any other approvers)",
     "3. Check Prevent self-review if a second person must always approve",
     "4. Save protection rules",
@@ -831,7 +831,7 @@ code_block([
 
 heading2("4. Approve the deployment")
 for s in [
-    "1. Go to github.com/Blaqlv/aop → Actions → the running workflow",
+    "1. Go to github.com/Auzyem/aop → Actions → the running workflow",
     "2. Click Review deployments",
     "3. Tick production",
     "4. Click Approve and deploy",
