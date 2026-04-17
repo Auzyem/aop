@@ -171,8 +171,7 @@ jobs:
           echo "Health check passed (HTTP 200)"
 
           # Auth endpoint reachable (hits API service, not web)
-          # --insecure: *.staging.asante.cc cert is pending ACM validation; remove once issued
-          AUTH_STATUS=$(curl -skL -o /dev/null -w "%{http_code}" \
+          AUTH_STATUS=$(curl -sL -o /dev/null -w "%{http_code}" \
             -X POST ${{ env.STAGING_API_URL }}/api/v1/auth/login \
             -H 'Content-Type: application/json' \
             -d '{"email":"nonexistent@example.com","password":"test"}')
