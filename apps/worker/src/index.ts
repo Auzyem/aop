@@ -1,4 +1,5 @@
 import 'dotenv/config';
+import http from 'http';
 import { Redis } from 'ioredis';
 import { Worker, Queue } from 'bullmq';
 import { logger } from '@aop/utils';
@@ -296,8 +297,27 @@ retentionReviewQueue
 
 logger.info({ queues: Object.values(QUEUE_NAMES) }, 'AOP Worker started');
 
+// ---------------------------------------------------------------------------
+// Minimal health-check HTTP server (ALB requires a responding endpoint)
+// ---------------------------------------------------------------------------
+
+const HEALTH_PORT = Number(process.env.PORT ?? 5000);
+const healthServer = http.createServer((req, res) => {
+  if (req.url === '/health' || req.url === '/healthz') {
+    res.writeHead(200, { 'Content-Type': 'application/json' });
+    res.end(JSON.stringify({ status: 'ok', timestamp: new Date().toISOString() }));
+  } else {
+    res.writeHead(404);
+    res.end();
+  }
+});
+healthServer.listen(HEALTH_PORT, () => {
+  logger.info({ port: HEALTH_PORT }, 'Worker health server listening');
+});
+
 const shutdown = async (signal: string) => {
   logger.info({ signal }, 'Shutdown signal received, draining workers...');
+  healthServer.close();
   await Promise.all(workers.map((w) => w.close()));
   await connection.quit();
   logger.info('Worker shut down cleanly');

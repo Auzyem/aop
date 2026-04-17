@@ -81,7 +81,7 @@ export default function TradeDeskDashboardPage() {
   const { data: awaitingLock = [], isLoading: awaitingLoading } = useTransactionsAwaitingLock();
   const { data: refineryPipeline = [], isLoading: refineryLoading } = useRefineryPipeline();
 
-  const chartData = ((history ?? []) as Record<string, unknown>[]).map((p) => ({
+  const chartData = ((history ?? []) as unknown as Record<string, unknown>[]).map((p) => ({
     time: new Date(p.recordedAt as string).toLocaleDateString('en-GB', {
       month: 'short',
       day: 'numeric',

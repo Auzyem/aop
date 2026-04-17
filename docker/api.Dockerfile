@@ -14,8 +14,8 @@ COPY packages/types/package.json ./packages/types/
 COPY packages/utils/package.json ./packages/utils/
 COPY apps/api/package.json ./apps/api/
 
-# Install production deps only
-RUN pnpm install --frozen-lockfile --prod
+# Install production deps only (HUSKY=0 skips git-hooks prepare script)
+RUN HUSKY=0 pnpm install --frozen-lockfile --prod
 
 # ============================================================
 # Stage 2 — Build
@@ -31,15 +31,18 @@ COPY packages/types/package.json ./packages/types/
 COPY packages/utils/package.json ./packages/utils/
 COPY apps/api/package.json ./apps/api/
 
-RUN pnpm install --frozen-lockfile
+RUN HUSKY=0 pnpm install --frozen-lockfile
 
 # Copy source
 COPY tsconfig.json ./
 COPY packages/ ./packages/
 COPY apps/api/ ./apps/api/
 
-# Generate Prisma client, then build
+# Build shared packages, then generate Prisma client, then build app
+RUN pnpm --filter @aop/types build
+RUN pnpm --filter @aop/utils build
 RUN pnpm --filter @aop/db db:generate
+RUN pnpm --filter @aop/db build
 RUN pnpm --filter @aop/api build
 
 # ============================================================
@@ -50,14 +53,25 @@ WORKDIR /app
 
 ENV NODE_ENV=production
 
+# OpenSSL required by Prisma query engine at runtime
+RUN apk add --no-cache openssl
+
 # Non-root user
 RUN addgroup --system --gid 1001 nodejs && \
     adduser --system --uid 1001 aop
 
-COPY --from=deps --chown=aop:nodejs /app/node_modules ./node_modules
+COPY --from=builder --chown=aop:nodejs /app/node_modules ./node_modules
 COPY --from=deps --chown=aop:nodejs /app/packages/db/node_modules ./packages/db/node_modules
+COPY --from=deps --chown=aop:nodejs /app/packages/utils/node_modules ./packages/utils/node_modules
+COPY --from=deps --chown=aop:nodejs /app/apps/api/node_modules ./apps/api/node_modules
 COPY --from=builder --chown=aop:nodejs /app/apps/api/dist ./apps/api/dist
+COPY --from=builder --chown=aop:nodejs /app/packages/db/package.json ./packages/db/package.json
+COPY --from=builder --chown=aop:nodejs /app/packages/db/dist ./packages/db/dist
 COPY --from=builder --chown=aop:nodejs /app/packages/db/prisma ./packages/db/prisma
+COPY --from=builder --chown=aop:nodejs /app/packages/utils/package.json ./packages/utils/package.json
+COPY --from=builder --chown=aop:nodejs /app/packages/utils/dist ./packages/utils/dist
+COPY --from=builder --chown=aop:nodejs /app/packages/types/package.json ./packages/types/package.json
+COPY --from=builder --chown=aop:nodejs /app/packages/types/dist ./packages/types/dist
 
 USER aop
 
@@ -65,4 +79,4 @@ EXPOSE 3001
 HEALTHCHECK --interval=30s --timeout=5s --start-period=10s --retries=3 \
   CMD wget -qO- http://localhost:3001/health || exit 1
 
-CMD ["node", "apps/api/dist/index.js"]
+CMD ["node", "apps/api/dist/apps/api/src/index.js"]

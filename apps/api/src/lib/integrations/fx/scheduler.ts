@@ -1,4 +1,5 @@
 import { Queue, Worker } from 'bullmq';
+import Redis from 'ioredis';
 import { prisma } from '@aop/db';
 import { logger } from '@aop/utils';
 import { redis } from '../../redis.js';
@@ -56,9 +57,11 @@ async function processFxJob() {
 export function initFxRateScheduler() {
   if (process.env.NODE_ENV === 'test') return; // skip in tests
 
-  // BullMQ accepts a connection options object or ioredis instance (cast needed for type compat)
+  // BullMQ requires maxRetriesPerRequest: null — use a dedicated connection
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const connection = redis as any;
+  const connection: any = new Redis(process.env.REDIS_URL ?? 'redis://localhost:6379', {
+    maxRetriesPerRequest: null,
+  });
 
   fxQueue = new Queue(QUEUE_NAME, { connection });
 

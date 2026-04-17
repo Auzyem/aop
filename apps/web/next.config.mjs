@@ -1,14 +1,11 @@
-import type { NextConfig } from 'next';
-// eslint-disable-next-line @typescript-eslint/no-require-imports, @typescript-eslint/no-var-requires
-const withPWAInit = require('next-pwa') as (
-  opts: Record<string, unknown>,
-) => (config: NextConfig) => NextConfig;
+import { createRequire } from 'module';
+const require = createRequire(import.meta.url);
+
+const withPWAInit = require('next-pwa');
 
 const withPWA = withPWAInit({
   dest: 'public',
-  // Only enable service worker in production
   disable: process.env.NODE_ENV === 'development',
-  // Cache agent routes for offline use
   runtimeCaching: [
     {
       urlPattern: /^https?.+\/agent\/.*/i,
@@ -29,7 +26,8 @@ const withPWA = withPWAInit({
   ],
 });
 
-const nextConfig: NextConfig = {
+/** @type {import('next').NextConfig} */
+const nextConfig = {
   output: 'standalone',
   transpilePackages: ['@aop/types', '@aop/utils'],
   reactStrictMode: true,

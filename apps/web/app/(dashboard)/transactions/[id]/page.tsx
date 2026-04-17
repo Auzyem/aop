@@ -261,8 +261,8 @@ function DocumentsTab({ id }: { id: string }) {
   const [rejectingId, setRejectingId] = useState<string | null>(null);
   const [rejectReason, setRejectReason] = useState('');
 
-  const checklistItems = (checklist?.items ?? []) as Record<string, unknown>[];
-  const uploadedDocs = (docs ?? []) as Record<string, unknown>[];
+  const checklistItems = (checklist?.items ?? []) as unknown as Record<string, unknown>[];
+  const uploadedDocs = (docs ?? []) as unknown as Record<string, unknown>[];
 
   async function handleDownloadAll() {
     const blob = await downloadAll.mutateAsync(id);
@@ -463,8 +463,8 @@ function FinanceTab({ tx, id }: { tx: Record<string, unknown>; id: string }) {
   const [rejectReason, setRejectReason] = useState('');
   const [showRejectForm, setShowRejectForm] = useState(false);
 
-  const costList = (costs ?? []) as Record<string, unknown>[];
-  const disbList = (disbursements ?? []) as Record<string, unknown>[];
+  const costList = (costs ?? []) as unknown as Record<string, unknown>[];
+  const disbList = (disbursements ?? []) as unknown as Record<string, unknown>[];
   const totalEst = costList.reduce((s, c) => s + Number(c.estimatedUsd ?? 0), 0);
   const totalAct = costList.reduce((s, c) => s + Number(c.actualUsd ?? 0), 0);
 
@@ -739,7 +739,7 @@ function FinanceTab({ tx, id }: { tx: Record<string, unknown>; id: string }) {
 
 function TimelineTab({ id }: { id: string }) {
   const { data: events, isLoading } = useTransactionEvents(id);
-  const eventList = (events ?? []) as Record<string, unknown>[];
+  const eventList = (events ?? []) as unknown as Record<string, unknown>[];
 
   const TYPE_ICON: Record<string, string> = {
     PHASE_CHANGE: '🔄',
@@ -810,7 +810,7 @@ function CommentsTab({ id }: { id: string }) {
   const [comment, setComment] = useState('');
   const bottomRef = useRef<HTMLDivElement>(null);
 
-  const comments = ((events ?? []) as Record<string, unknown>[]).filter(
+  const comments = ((events ?? []) as unknown as Record<string, unknown>[]).filter(
     (e) => e.type === 'COMMENT',
   );
 

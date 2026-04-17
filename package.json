@@ -16,7 +16,7 @@
     "format:check": "prettier --check \"**/*.{ts,tsx,js,json,md,yaml,yml}\"",
     "typecheck": "pnpm --recursive typecheck",
     "clean": "pnpm --recursive exec rm -rf dist .next .turbo",
-    "prepare": "husky"
+    "prepare": "husky || true"
   },
   "devDependencies": {
     "@typescript-eslint/eslint-plugin": "^7.0.0",

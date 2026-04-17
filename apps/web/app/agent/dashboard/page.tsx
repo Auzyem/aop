@@ -53,7 +53,7 @@ export default function AgentDashboardPage() {
   const { data, isLoading } = useTransactions({ limit: 50 });
   const transactions = data?.data?.transactions ?? [];
 
-  const active = (transactions as Record<string, unknown>[]).filter(
+  const active = (transactions as unknown as Record<string, unknown>[]).filter(
     (t) => !['CANCELLED', 'SETTLED'].includes(t.status as string),
   );
   const actionRequired = active.filter((t) => {

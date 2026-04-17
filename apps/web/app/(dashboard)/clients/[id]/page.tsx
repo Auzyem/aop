@@ -371,7 +371,7 @@ function KycDocumentsTab({ id }: { id: string }) {
   const [rejectReason, setRejectReason] = useState('');
   const [uploadingFor, setUploadingFor] = useState<string | null>(null);
 
-  const records = (kycData?.records ?? []) as Record<string, unknown>[];
+  const records = (kycData?.records ?? []) as unknown as Record<string, unknown>[];
 
   function getDocRecord(docType: string) {
     return records.find((r) => r.documentType === docType);
@@ -527,7 +527,7 @@ function KycDocumentsTab({ id }: { id: string }) {
 function TransactionsTab({ id }: { id: string }) {
   const router = useRouter();
   const { data, isLoading } = useClientTransactions(id);
-  const txns = (data ?? []) as Record<string, unknown>[];
+  const txns = (data ?? []) as unknown as Record<string, unknown>[];
 
   const KG_TO_TROY_OZ = 32.1507;
 

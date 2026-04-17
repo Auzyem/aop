@@ -6,9 +6,11 @@
   :root {
     --background: 0 0% 100%;
     --foreground: 222 84% 5%;
+    --font-inter: Inter, system-ui, sans-serif;
+    --font-jetbrains-mono: 'JetBrains Mono', 'Fira Code', 'Cascadia Code', ui-monospace, monospace;
   }
   body {
     @apply bg-white text-gray-900;
-    font-family: Inter, system-ui, sans-serif;
+    font-family: var(--font-inter);
   }
 }

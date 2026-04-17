@@ -370,7 +370,7 @@ export default function TransactionsPage() {
 
       <DataTable
         columns={columns as never}
-        data={transactions as Record<string, unknown>[]}
+        data={transactions as unknown as Record<string, unknown>[]}
         loading={isLoading}
         onRowClick={(row) => router.push(`/transactions/${row.id as string}`)}
         pagination={{ page, limit: 20, total, onPageChange: setPage }}

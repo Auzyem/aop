@@ -21,8 +21,12 @@ WORKDIR /app
 
 RUN corepack enable && corepack prepare pnpm@latest --activate
 
-COPY --from=deps /app/node_modules ./node_modules
-COPY --from=deps /app/apps/web/node_modules ./apps/web/node_modules
+COPY package.json pnpm-workspace.yaml pnpm-lock.yaml ./
+COPY packages/types/package.json ./packages/types/
+COPY packages/utils/package.json ./packages/utils/
+COPY apps/web/package.json ./apps/web/
+
+RUN HUSKY=0 pnpm install --frozen-lockfile
 
 COPY tsconfig.json ./
 COPY packages/types/ ./packages/types/
@@ -31,6 +35,8 @@ COPY apps/web/ ./apps/web/
 
 ENV NEXT_TELEMETRY_DISABLED=1
 
+RUN pnpm --filter @aop/types build
+RUN pnpm --filter @aop/utils build
 RUN pnpm --filter @aop/web build
 
 # ============================================================

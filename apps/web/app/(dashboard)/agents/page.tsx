@@ -22,7 +22,7 @@ function ScoreBar({ value }: { value: number | null | undefined }) {
 export default function AgentsPage() {
   const [page, setPage] = useState(1);
   const { data: agents, isLoading } = useAgents({ page, limit: 20 });
-  const agentList = (agents ?? []) as Record<string, unknown>[];
+  const agentList = (agents ?? []) as unknown as Record<string, unknown>[];
 
   const columns = [
     {

@@ -103,7 +103,9 @@ export default function AgentTransactionPage({ params }: { params: Promise<{ id:
 
   const phase = tx.phase as string;
   const docTypes = PHASE_DOC_TYPES[phase] ?? [];
-  const commentEvents = (events as Record<string, unknown>[]).filter((e) => e.type === 'COMMENT');
+  const commentEvents = (events as unknown as Record<string, unknown>[]).filter(
+    (e) => e.type === 'COMMENT',
+  );
 
   async function handleDocUpload(docType: string, file: File) {
     setUploadingDoc(docType);
@@ -308,86 +310,89 @@ export default function AgentTransactionPage({ params }: { params: Promise<{ id:
           )}
 
           {/* Disbursement receipts if PHASE_5 */}
-          {phase === 'PHASE_5' && (disbursements as Record<string, unknown>[]).length > 0 && (
-            <div className="space-y-3">
-              <h3 className="text-xs font-semibold text-gray-400 uppercase tracking-wide px-1">
-                Disbursement Receipts
-              </h3>
-              {(disbursements as Record<string, unknown>[]).map((d) => (
-                <div
-                  key={d.id as string}
-                  className="bg-white rounded-xl border border-gray-100 shadow-sm p-4"
-                >
-                  <div className="flex items-center justify-between mb-3">
-                    <div>
-                      <p className="font-medium text-sm text-gray-800">
-                        Tranche {d.trancheNo as number}
-                      </p>
-                      <p className="text-xs text-gray-400">
-                        ${Number(d.amountUsd).toLocaleString()} USD
-                      </p>
+          {phase === 'PHASE_5' &&
+            (disbursements as unknown as Record<string, unknown>[]).length > 0 && (
+              <div className="space-y-3">
+                <h3 className="text-xs font-semibold text-gray-400 uppercase tracking-wide px-1">
+                  Disbursement Receipts
+                </h3>
+                {(disbursements as unknown as Record<string, unknown>[]).map((d) => (
+                  <div
+                    key={d.id as string}
+                    className="bg-white rounded-xl border border-gray-100 shadow-sm p-4"
+                  >
+                    <div className="flex items-center justify-between mb-3">
+                      <div>
+                        <p className="font-medium text-sm text-gray-800">
+                          Tranche {d.trancheNo as number}
+                        </p>
+                        <p className="text-xs text-gray-400">
+                          ${Number(d.amountUsd).toLocaleString()} USD
+                        </p>
+                      </div>
+                      <span
+                        className={cn(
+                          'text-xs font-semibold px-2 py-1 rounded-full',
+                          d.status === 'APPROVED'
+                            ? 'bg-green-100 text-green-700'
+                            : d.status === 'PENDING'
+                              ? 'bg-amber-100 text-amber-700'
+                              : 'bg-gray-100 text-gray-500',
+                        )}
+                      >
+                        {d.status as string}
+                      </span>
                     </div>
-                    <span
-                      className={cn(
-                        'text-xs font-semibold px-2 py-1 rounded-full',
-                        d.status === 'APPROVED'
-                          ? 'bg-green-100 text-green-700'
-                          : d.status === 'PENDING'
-                            ? 'bg-amber-100 text-amber-700'
-                            : 'bg-gray-100 text-gray-500',
-                      )}
-                    >
-                      {d.status as string}
-                    </span>
+                    {d.status === 'APPROVED' && !d.receiptUrl && (
+                      <label
+                        className={cn(
+                          'flex items-center justify-center gap-2 w-full border-2 border-dashed rounded-xl py-4 cursor-pointer transition-colors',
+                          uploadingReceipt === d.id
+                            ? 'border-gold bg-amber-50 opacity-70 pointer-events-none'
+                            : 'border-gray-200 hover:border-gold hover:bg-amber-50/30',
+                        )}
+                      >
+                        {uploadingReceipt === d.id ? (
+                          <div className="w-5 h-5 border-2 border-gold border-t-transparent rounded-full animate-spin" />
+                        ) : (
+                          <>
+                            <span className="text-lg">🧾</span>
+                            <span className="text-xs font-medium text-gray-600">
+                              Upload receipt
+                            </span>
+                          </>
+                        )}
+                        <input
+                          type="file"
+                          accept="image/*,application/pdf"
+                          capture="environment"
+                          className="sr-only"
+                          disabled={uploadingReceipt === (d.id as string)}
+                          onChange={(e) => {
+                            const file = e.target.files?.[0];
+                            if (file) handleReceiptUpload(d.id as string, file);
+                            e.target.value = '';
+                          }}
+                        />
+                      </label>
+                    )}
+                    {!!d.receiptUrl && (
+                      <p className="text-xs text-green-600 flex items-center gap-1">
+                        <span>✓</span> Receipt uploaded
+                      </p>
+                    )}
                   </div>
-                  {d.status === 'APPROVED' && !d.receiptUrl && (
-                    <label
-                      className={cn(
-                        'flex items-center justify-center gap-2 w-full border-2 border-dashed rounded-xl py-4 cursor-pointer transition-colors',
-                        uploadingReceipt === d.id
-                          ? 'border-gold bg-amber-50 opacity-70 pointer-events-none'
-                          : 'border-gray-200 hover:border-gold hover:bg-amber-50/30',
-                      )}
-                    >
-                      {uploadingReceipt === d.id ? (
-                        <div className="w-5 h-5 border-2 border-gold border-t-transparent rounded-full animate-spin" />
-                      ) : (
-                        <>
-                          <span className="text-lg">🧾</span>
-                          <span className="text-xs font-medium text-gray-600">Upload receipt</span>
-                        </>
-                      )}
-                      <input
-                        type="file"
-                        accept="image/*,application/pdf"
-                        capture="environment"
-                        className="sr-only"
-                        disabled={uploadingReceipt === (d.id as string)}
-                        onChange={(e) => {
-                          const file = e.target.files?.[0];
-                          if (file) handleReceiptUpload(d.id as string, file);
-                          e.target.value = '';
-                        }}
-                      />
-                    </label>
-                  )}
-                  {!!d.receiptUrl && (
-                    <p className="text-xs text-green-600 flex items-center gap-1">
-                      <span>✓</span> Receipt uploaded
-                    </p>
-                  )}
-                </div>
-              ))}
-            </div>
-          )}
+                ))}
+              </div>
+            )}
         </div>
       )}
 
       {/* ── TIMELINE TAB ── */}
       {activeTab === 'timeline' && (
         <div>
-          {(events as Record<string, unknown>[]).filter((e) => e.type !== 'COMMENT').length ===
-          0 ? (
+          {(events as unknown as Record<string, unknown>[]).filter((e) => e.type !== 'COMMENT')
+            .length === 0 ? (
             <div className="text-center py-10 text-gray-400">
               <p className="text-3xl mb-2">📋</p>
               <p className="text-sm">No events yet</p>
@@ -396,7 +401,7 @@ export default function AgentTransactionPage({ params }: { params: Promise<{ id:
             <div className="relative pl-6">
               <div className="absolute left-2 top-2 bottom-2 w-0.5 bg-gray-100" />
               <div className="space-y-5">
-                {(events as Record<string, unknown>[])
+                {(events as unknown as Record<string, unknown>[])
                   .filter((e) => e.type !== 'COMMENT')
                   .map((e) => (
                     <div key={e.id as string} className="relative">

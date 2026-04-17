@@ -120,7 +120,7 @@ export default function DashboardPage() {
   }, [transactions]);
 
   const { chartData, amFixTimes, pmFixTimes } = useMemo(() => {
-    const raw = ((lmeData?.priceHistory ?? []) as Record<string, unknown>[]).slice(-48);
+    const raw = ((lmeData?.priceHistory ?? []) as unknown as Record<string, unknown>[]).slice(-48);
     const history = raw.map((p) => ({
       time: new Date(p.recordedAt as string).toLocaleTimeString('en-GB', {
         hour: '2-digit',

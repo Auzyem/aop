@@ -37,8 +37,8 @@ export default function AdminPage() {
   const resetTotp = useResetUserTotp();
   const exportCsv = useExportAuditCsv();
 
-  const userList = (users ?? []) as Record<string, unknown>[];
-  const auditList = (auditLog ?? []) as Record<string, unknown>[];
+  const userList = (users ?? []) as unknown as Record<string, unknown>[];
+  const auditList = (auditLog ?? []) as unknown as Record<string, unknown>[];
 
   const handleDeactivate = async () => {
     if (!deactivateTarget) return;
@@ -54,7 +54,7 @@ export default function AdminPage() {
 
   const handleExport = async () => {
     try {
-      const blob = await exportCsv.mutateAsync();
+      const blob = await exportCsv.mutateAsync(undefined);
       const url = URL.createObjectURL(blob);
       const a = document.createElement('a');
       a.href = url;
@@ -108,7 +108,7 @@ export default function AdminPage() {
       header: '',
       render: (r: Record<string, unknown>) => (
         <div className="flex gap-2 justify-end">
-          {r.isActive && (
+          {Boolean(r.isActive) && (
             <button
               onClick={(e) => {
                 e.stopPropagation();
@@ -119,7 +119,7 @@ export default function AdminPage() {
               Deactivate
             </button>
           )}
-          {r.totpEnabled && (
+          {Boolean(r.totpEnabled) && (
             <button
               onClick={(e) => {
                 e.stopPropagation();

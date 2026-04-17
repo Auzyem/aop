@@ -22,11 +22,11 @@ export default function AgentDisbursementsPage() {
     ((user as unknown as Record<string, unknown>)?.agentId as string) ?? user?.id ?? null;
 
   const { data: rawDisbursements, isLoading, refetch } = useAgentDisbursements(agentId);
-  const disbursements = (rawDisbursements as Record<string, unknown>[]) ?? [];
+  const disbursements = (rawDisbursements as unknown as Record<string, unknown>[]) ?? [];
 
   const { data: txData } = useTransactions({ limit: 50 });
   const activeTransactions = (
-    (txData?.data?.transactions ?? []) as Record<string, unknown>[]
+    (txData?.data?.transactions ?? []) as unknown as Record<string, unknown>[]
   ).filter((t) => !['CANCELLED', 'SETTLED'].includes(t.status as string));
 
   const [showRequestModal, setShowRequestModal] = useState(false);

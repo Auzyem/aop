@@ -13,13 +13,12 @@
 
 import { prisma } from '@aop/db';
 import { logger } from '@aop/utils';
-import type { User } from '@aop/db';
 
 // ---------------------------------------------------------------------------
 // Data subject access request — export all personal data for a client
 // ---------------------------------------------------------------------------
 
-export async function exportSubjectData(clientId: string, requestedBy: User) {
+export async function exportSubjectData(clientId: string, requestedBy: { id: string }) {
   const client = await prisma.client.findUnique({
     where: { id: clientId },
     include: {
@@ -114,7 +113,11 @@ export async function exportSubjectData(clientId: string, requestedBy: User) {
 // Deletion request — logs the request, does NOT delete data
 // ---------------------------------------------------------------------------
 
-export async function requestDeletion(clientId: string, reason: string, requestedBy: User) {
+export async function requestDeletion(
+  clientId: string,
+  reason: string,
+  requestedBy: { id: string },
+) {
   const client = await prisma.client.findUnique({
     where: { id: clientId },
     select: {
