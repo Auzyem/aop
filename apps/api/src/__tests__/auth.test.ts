@@ -14,6 +14,14 @@ jest.mock('@aop/db', () => ({
   },
 }));
 
+jest.mock('../lib/rate-limits', () => ({
+  loginRateLimit: (_req: unknown, _res: unknown, next: () => void) => next(),
+  totpRateLimit: (_req: unknown, _res: unknown, next: () => void) => next(),
+  generalApiRateLimit: (_req: unknown, _res: unknown, next: () => void) => next(),
+  documentUploadRateLimit: (_req: unknown, _res: unknown, next: () => void) => next(),
+  sanctionsRateLimit: (_req: unknown, _res: unknown, next: () => void) => next(),
+}));
+
 jest.mock('../lib/redis', () => ({
   redis: {
     get: jest.fn().mockResolvedValue(null),

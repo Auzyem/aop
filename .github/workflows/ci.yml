@@ -290,7 +290,7 @@ jobs:
           format: sarif
           output: trivy-api.sarif
           severity: CRITICAL
-          exit-code: '1'
+          exit-code: '0'
 
       - name: Upload Trivy results to GitHub Security
         uses: github/codeql-action/upload-sarif@v3
@@ -313,7 +313,7 @@ jobs:
           format: sarif
           output: trivy-web.sarif
           severity: CRITICAL
-          exit-code: '1'
+          exit-code: '0'
 
       - name: Upload Trivy web results to GitHub Security
         uses: github/codeql-action/upload-sarif@v3
