@@ -257,7 +257,7 @@ describe('Admin API — User CRUD', () => {
     const token = makeToken('ADMIN');
     const res = await request(app).post('/api/v1/admin/users').set('Authorization', token).send({
       email: 'newuser@test.com',
-      password: 'password123',
+      password: 'Password123!',
       role: 'VIEWER',
       countryCode: 'KE',
     });

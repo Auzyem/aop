@@ -15,7 +15,12 @@ jest.mock('@aop/db', () => ({
 }));
 
 jest.mock('../lib/redis', () => ({
-  redis: {},
+  redis: {
+    get: jest.fn().mockResolvedValue(null),
+    incr: jest.fn().mockResolvedValue(1),
+    expire: jest.fn().mockResolvedValue(1),
+    del: jest.fn().mockResolvedValue(1),
+  },
   setRefreshToken: jest.fn().mockResolvedValue(undefined),
   hasRefreshToken: jest.fn().mockResolvedValue(true),
   deleteRefreshToken: jest.fn().mockResolvedValue(undefined),
