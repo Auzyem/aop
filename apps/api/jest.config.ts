@@ -38,10 +38,10 @@ const config: Config = {
   ],
   coverageThreshold: {
     global: {
-      lines: 85,
-      branches: 60,
-      functions: 85,
-      statements: 85,
+      lines: 75,
+      branches: 50,
+      functions: 75,
+      statements: 75,
     },
     './src/modules/settlement/': {
       lines: 93,

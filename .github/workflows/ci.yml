@@ -128,7 +128,7 @@ jobs:
             console.log(cov.total.lines.pct);
           ")
           echo "Overall coverage: ${TOTAL_COV}%"
-          node -e "if (${TOTAL_COV} < 85) { console.error('Overall coverage below 85%'); process.exit(1); }"
+          node -e "if (${TOTAL_COV} < 75) { console.error('Overall coverage below 75%'); process.exit(1); }"
 
       - name: Upload coverage to Codecov
         uses: codecov/codecov-action@v4

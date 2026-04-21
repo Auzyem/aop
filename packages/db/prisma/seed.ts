@@ -76,6 +76,42 @@ async function main() {
   console.log(`✅  Compliance user: ${complianceUser.email} (${complianceUser.id})`);
 
   // ---------------------------------------------------------------------------
+  // admin2@aop.local  —  password: Claude4321#
+  // ---------------------------------------------------------------------------
+  const admin2Hash = await bcrypt.hash('Claude4321#', 12);
+
+  const admin2User = await prisma.user.upsert({
+    where: { email: 'admin2@aop.local' },
+    update: {},
+    create: {
+      email: 'admin2@aop.local',
+      passwordHash: admin2Hash,
+      role: 'SUPER_ADMIN',
+      countryCode: 'KE',
+      isActive: true,
+    },
+  });
+  console.log(`✅  Admin2 user: ${admin2User.email} (${admin2User.id})`);
+
+  // ---------------------------------------------------------------------------
+  // comp@aop.local  —  password: Claudecoply4321#
+  // ---------------------------------------------------------------------------
+  const compHash = await bcrypt.hash('Claudecoply4321#', 12);
+
+  const compUser = await prisma.user.upsert({
+    where: { email: 'comp@aop.local' },
+    update: {},
+    create: {
+      email: 'comp@aop.local',
+      passwordHash: compHash,
+      role: 'COMPLIANCE_OFFICER',
+      countryCode: 'KE',
+      isActive: true,
+    },
+  });
+  console.log(`✅  Comp user: ${compUser.email} (${compUser.id})`);
+
+  // ---------------------------------------------------------------------------
   // Refinery
   // ---------------------------------------------------------------------------
   const refinery = await prisma.refinery.upsert({
