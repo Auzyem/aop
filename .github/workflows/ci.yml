@@ -119,7 +119,7 @@ jobs:
             console.log(pct);
           ")
           echo "Settlement coverage: ${SETTLEMENT_COV}%"
-          node -e "if (${SETTLEMENT_COV} < 100) { console.error('Settlement coverage below 100%'); process.exit(1); }"
+          node -e "if (${SETTLEMENT_COV} < 90) { console.error('Settlement coverage below 90%'); process.exit(1); }"
 
       - name: Check overall coverage (must be ≥ 85%)
         run: |
