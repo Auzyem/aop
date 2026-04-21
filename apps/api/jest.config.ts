@@ -17,6 +17,7 @@ const config: Config = {
     '^@aop/utils$': '<rootDir>/../../packages/utils/src/index.ts',
   },
   testMatch: ['<rootDir>/src/__tests__/**/*.test.ts'],
+  coverageReporters: ['json', 'json-summary', 'text', 'lcov'],
   collectCoverageFrom: [
     'src/auth/**/*.ts',
     'src/lib/**/*.ts',
