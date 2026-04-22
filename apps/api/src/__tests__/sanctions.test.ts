@@ -296,8 +296,12 @@ describe('POST /api/v1/clients/:id/screening', () => {
     expect(res.status).toBe(404);
   });
 
-  it('returns 403 for non-COMPLIANCE_OFFICER role', async () => {
-    const token = jwtLib.signAccessToken({ id: 'adm-1', email: 'admin@aop.local', role: 'ADMIN' });
+  it('returns 403 for VIEWER role', async () => {
+    const token = jwtLib.signAccessToken({
+      id: 'viewer-1',
+      email: 'viewer@aop.local',
+      role: 'VIEWER',
+    });
 
     const res = await request(app)
       .post('/api/v1/clients/client-abc/screening')
