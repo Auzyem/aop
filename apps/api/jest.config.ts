@@ -27,6 +27,7 @@ const config: Config = {
     // Exclude files requiring external services (covered at integration level)
     '!src/lib/redis.ts',
     '!src/lib/integrations/**/live.ts',
+    '!src/lib/integrations/**/dilisense.ts',
     '!src/lib/integrations/**/ses.live.ts',
     '!src/lib/integrations/**/scheduler.ts',
     '!src/lib/integrations/**/sms.service.ts',

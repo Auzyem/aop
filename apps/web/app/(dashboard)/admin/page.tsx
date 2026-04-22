@@ -65,14 +65,13 @@ export default function AdminPage() {
   async function handleCreateUser(e: React.FormEvent) {
     e.preventDefault();
     try {
-      const payload: Record<string, string> = {
+      await createUser.mutateAsync({
         email: newUser.email,
         password: newUser.password,
         role: newUser.role,
         countryCode: newUser.countryCode,
-      };
-      if (newUser.agentId) payload.agentId = newUser.agentId;
-      await createUser.mutateAsync(payload);
+        ...(newUser.agentId ? { agentId: newUser.agentId } : {}),
+      });
       toast.success('User created successfully');
       setShowCreate(false);
       setNewUser(EMPTY_USER);
