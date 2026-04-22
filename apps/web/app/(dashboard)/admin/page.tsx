@@ -7,6 +7,7 @@ import { ConfirmDialog } from '../../../components/ui/confirm-dialog';
 import { RoleGuard } from '../../../components/auth/role-guard';
 import {
   useUsers,
+  useCreateUser,
   useDeactivateUser,
   useResetUserTotp,
   useAuditLog,
@@ -17,6 +18,23 @@ import { toast } from 'sonner';
 
 const TABS = ['Users', 'Audit Log'] as const;
 type Tab = (typeof TABS)[number];
+
+const ROLES = [
+  'SUPER_ADMIN',
+  'ADMIN',
+  'COMPLIANCE_OFFICER',
+  'TRADE_MANAGER',
+  'OPERATIONS',
+  'VIEWER',
+] as const;
+
+const EMPTY_USER = {
+  email: '',
+  password: '',
+  role: 'VIEWER' as string,
+  countryCode: '',
+  agentId: '',
+};
 
 const ROLE_VARIANT: Record<string, 'success' | 'info' | 'warning' | 'default'> = {
   SUPER_ADMIN: 'danger' as never,
@@ -30,12 +48,38 @@ const ROLE_VARIANT: Record<string, 'success' | 'info' | 'warning' | 'default'> =
 export default function AdminPage() {
   const [tab, setTab] = useState<Tab>('Users');
   const [deactivateTarget, setDeactivateTarget] = useState<string | null>(null);
+  const [showCreate, setShowCreate] = useState(false);
+  const [newUser, setNewUser] = useState(EMPTY_USER);
 
   const { data: users, isLoading: usersLoading } = useUsers();
   const { data: auditLog, isLoading: auditLoading } = useAuditLog({ limit: 100 });
   const deactivate = useDeactivateUser();
   const resetTotp = useResetUserTotp();
   const exportCsv = useExportAuditCsv();
+  const createUser = useCreateUser();
+
+  function setUserField(key: keyof typeof EMPTY_USER, value: string) {
+    setNewUser((u) => ({ ...u, [key]: value }));
+  }
+
+  async function handleCreateUser(e: React.FormEvent) {
+    e.preventDefault();
+    try {
+      const payload: Record<string, string> = {
+        email: newUser.email,
+        password: newUser.password,
+        role: newUser.role,
+        countryCode: newUser.countryCode,
+      };
+      if (newUser.agentId) payload.agentId = newUser.agentId;
+      await createUser.mutateAsync(payload);
+      toast.success('User created successfully');
+      setShowCreate(false);
+      setNewUser(EMPTY_USER);
+    } catch {
+      toast.error('Failed to create user');
+    }
+  }
 
   const userList = (users ?? []) as unknown as Record<string, unknown>[];
   const auditList = (auditLog ?? []) as unknown as Record<string, unknown>[];
@@ -165,13 +209,107 @@ export default function AdminPage() {
   return (
     <RoleGuard allowedRoles={['SUPER_ADMIN', 'ADMIN']}>
       <div>
+        {showCreate && (
+          <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+            <div className="bg-white rounded-xl shadow-xl w-full max-w-md mx-4 p-6">
+              <h3 className="text-lg font-semibold text-aop-dark mb-4">Create User</h3>
+              <form onSubmit={handleCreateUser} className="space-y-3">
+                <div>
+                  <label className="block text-xs font-medium text-gray-700 mb-1">Email *</label>
+                  <input
+                    required
+                    type="email"
+                    value={newUser.email}
+                    onChange={(e) => setUserField('email', e.target.value)}
+                    className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-gold"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-medium text-gray-700 mb-1">Password *</label>
+                  <input
+                    required
+                    type="password"
+                    minLength={12}
+                    value={newUser.password}
+                    onChange={(e) => setUserField('password', e.target.value)}
+                    placeholder="Min 12 chars, upper, number, symbol"
+                    className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-gold"
+                  />
+                </div>
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <label className="block text-xs font-medium text-gray-700 mb-1">Role *</label>
+                    <select
+                      required
+                      value={newUser.role}
+                      onChange={(e) => setUserField('role', e.target.value)}
+                      className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-gold"
+                    >
+                      {ROLES.map((r) => (
+                        <option key={r} value={r}>
+                          {r.replace(/_/g, ' ')}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                  <div>
+                    <label className="block text-xs font-medium text-gray-700 mb-1">
+                      Country Code *
+                    </label>
+                    <input
+                      required
+                      maxLength={2}
+                      placeholder="KE"
+                      value={newUser.countryCode}
+                      onChange={(e) => setUserField('countryCode', e.target.value.toUpperCase())}
+                      className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-gold"
+                    />
+                  </div>
+                </div>
+                <div>
+                  <label className="block text-xs font-medium text-gray-700 mb-1">
+                    Agent ID <span className="text-gray-400">(optional)</span>
+                  </label>
+                  <input
+                    value={newUser.agentId}
+                    onChange={(e) => setUserField('agentId', e.target.value)}
+                    placeholder="Leave blank for internal staff"
+                    className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-gold"
+                  />
+                </div>
+                <div className="flex justify-end gap-3 pt-2">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setShowCreate(false);
+                      setNewUser(EMPTY_USER);
+                    }}
+                    className="px-4 py-2 rounded-lg border border-gray-300 text-gray-700 hover:bg-gray-50 text-sm font-medium"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="submit"
+                    disabled={createUser.isPending}
+                    className="px-4 py-2 rounded-lg bg-gold text-white text-sm font-medium hover:bg-gold-dark disabled:opacity-50"
+                  >
+                    {createUser.isPending ? 'Creating…' : 'Create User'}
+                  </button>
+                </div>
+              </form>
+            </div>
+          </div>
+        )}
         <PageHeader
           title="Administration"
           breadcrumbs={[{ label: 'Home', href: '/dashboard' }, { label: 'Admin' }]}
           actions={
             tab === 'Users' ? (
-              <button className="bg-gold text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-gold-dark transition-colors">
-                + Invite User
+              <button
+                onClick={() => setShowCreate(true)}
+                className="bg-gold text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-gold-dark transition-colors"
+              >
+                + Create User
               </button>
             ) : (
               <button

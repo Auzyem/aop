@@ -1,6 +1,6 @@
 import { logger } from '@aop/utils';
 import type { ISanctionsProvider } from './types.js';
-import { ComplyAdvantageSanctionsProvider } from './live.js';
+import { DilisenseSanctionsProvider } from './dilisense.js';
 import { MockSanctionsProvider } from './mock.js';
 
 // ---------------------------------------------------------------------------
@@ -13,15 +13,15 @@ export function getSanctionsProvider(): ISanctionsProvider {
   if (_instance) return _instance;
 
   const isTest = process.env.NODE_ENV === 'test';
-  const apiKey = process.env.SANCTIONS_API_KEY;
+  const apiKey = process.env.DILISENSE_API_KEY;
 
   if (isTest || !apiKey) {
     if (!isTest && !apiKey) {
-      logger.warn('SANCTIONS_API_KEY not set — using MockSanctionsProvider');
+      logger.warn('DILISENSE_API_KEY not set — using MockSanctionsProvider');
     }
     _instance = new MockSanctionsProvider();
   } else {
-    _instance = new ComplyAdvantageSanctionsProvider(apiKey);
+    _instance = new DilisenseSanctionsProvider(apiKey);
   }
 
   return _instance;

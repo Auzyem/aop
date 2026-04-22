@@ -45,24 +45,18 @@ export function isMarketHours(now: Date = new Date()): boolean {
 // metals.dev integration
 // ---------------------------------------------------------------------------
 
-interface MetalsDevResponse {
-  status: string; // 'success' | 'error'
-  currency: string; // 'USD'
-  unit: string; // 'kg'
+interface MetalsDevSpotResponse {
   metals: {
-    gold: number; // USD per kg
+    gold: number; // USD per troy oz
     [key: string]: number;
   };
-  timestamp: number; // Unix epoch seconds
+  currency: string; // 'USD'
+  [key: string]: unknown;
 }
 
 /**
- * Fetch spot gold price from metals.dev.
- * Returns price in USD per troy oz (converted from USD per kg).
- *
- * Conversion: pricePerTroyOz = pricePerKg × (TROY_OZ_PER_GRAM / 1000)
- *   because 1 kg = 1000 g = 1000 / 31.1035 troy oz ≈ 32.1507 troy oz
- *   so: $/troy oz = ($/kg) × (31.1035 g/troy oz) / (1000 g/kg)
+ * Fetch spot gold price from metals.dev /v1/metal/spot endpoint.
+ * Price is returned directly in USD per troy oz — no unit conversion needed.
  */
 async function fetchFromMetalsDev(): Promise<{ priceUsd: number; timestamp: Date } | null> {
   const apiKey = process.env.METALS_DEV_API_KEY;
@@ -71,19 +65,18 @@ async function fetchFromMetalsDev(): Promise<{ priceUsd: number; timestamp: Date
     return null;
   }
 
-  const resp = await axios.get<MetalsDevResponse>(
-    `https://api.metals.dev/v1/latest?api_key=${apiKey}&currency=USD&unit=kg`,
+  const resp = await axios.get<MetalsDevSpotResponse>(
+    `https://api.metals.dev/v1/metal/spot?api_key=${apiKey}&metal=gold&currency=USD`,
     { timeout: 10_000 },
   );
 
-  if (resp.data.status !== 'success' || typeof resp.data.metals?.gold !== 'number') {
-    logger.warn({ data: resp.data }, 'metals.dev returned unsuccessful response');
+  const price = resp.data.metals?.gold;
+  if (typeof price !== 'number' || price <= 0) {
+    logger.warn({ data: resp.data }, 'metals.dev returned unexpected response');
     return null;
   }
 
-  // Convert USD/kg → USD/troy oz
-  const priceUsd = resp.data.metals.gold * (TROY_OZ_PER_GRAM / 1000);
-  return { priceUsd, timestamp: new Date(resp.data.timestamp * 1000) };
+  return { priceUsd: price, timestamp: new Date() };
 }
 
 // ---------------------------------------------------------------------------
