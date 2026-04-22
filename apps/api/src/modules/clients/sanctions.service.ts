@@ -66,6 +66,42 @@ export async function screenClient(clientId: string, screenedById: string) {
 }
 
 // ---------------------------------------------------------------------------
+// Record manual screening (user checked on provider site)
+// ---------------------------------------------------------------------------
+
+export async function recordManualScreening(
+  clientId: string,
+  screenedById: string,
+  outcome: 'CLEAR' | 'HIT' | 'POSSIBLE_MATCH',
+  note?: string,
+) {
+  const client = await prisma.client.findUnique({ where: { id: clientId } });
+  if (!client) throw new NotFoundError('Client', clientId);
+
+  const screening = await prisma.sanctionsScreening.create({
+    data: {
+      clientId,
+      provider: 'MANUAL',
+      rawResult: { note: note ?? 'Manually checked on provider site' } as never,
+      outcome,
+      screenedBy: screenedById,
+    },
+  });
+
+  const clientUpdate: Parameters<typeof prisma.client.update>[0]['data'] = {
+    sanctionsStatus: outcome,
+  };
+  if (outcome === 'HIT') clientUpdate.kycStatus = 'REJECTED';
+  await prisma.client.update({ where: { id: clientId }, data: clientUpdate });
+
+  if (outcome === 'HIT') {
+    notifyComplianceSanctionsHit(client.fullName, clientId).catch(() => {});
+  }
+
+  return screening;
+}
+
+// ---------------------------------------------------------------------------
 // Batch re-screen all active clients
 // ---------------------------------------------------------------------------
 

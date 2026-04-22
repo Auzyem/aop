@@ -6,6 +6,7 @@ import {
   createClient,
   updateClient,
   runSanctionsScreen,
+  manualSanctionsRecord,
   getClientKyc,
   approveKyc,
   rejectKyc,
@@ -55,6 +56,18 @@ export function useSanctionsScreen(id: string) {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: () => runSanctionsScreen(id),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['client', id] });
+      qc.invalidateQueries({ queryKey: ['client', id, 'screenings'] });
+    },
+  });
+}
+
+export function useManualSanctionsScreen(id: string) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (payload: { outcome: 'CLEAR' | 'HIT' | 'POSSIBLE_MATCH'; note?: string }) =>
+      manualSanctionsRecord(id, payload.outcome, payload.note),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['client', id] });
       qc.invalidateQueries({ queryKey: ['client', id, 'screenings'] });

@@ -3,7 +3,11 @@ import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { cn } from '../../lib/utils';
 import { useCreateClient } from '../../lib/hooks/use-clients';
-import { uploadKycDocument } from '../../lib/api/clients';
+import {
+  uploadKycDocument,
+  runSanctionsScreen,
+  manualSanctionsRecord,
+} from '../../lib/api/clients';
 
 interface Props {
   open: boolean;
@@ -53,6 +57,8 @@ export function NewClientWizard({ open, onClose }: Props) {
   const [uploading, setUploading] = useState<DocType | null>(null);
   const [screening, setScreening] = useState<{ outcome: string; hitCount?: number } | null>(null);
   const [screeningLoading, setScreeningLoading] = useState(false);
+  const [sanctionMode, setSanctionMode] = useState<'auto' | 'skip' | 'manual'>('auto');
+  const [manualOutcome, setManualOutcome] = useState<'CLEAR' | 'HIT' | 'POSSIBLE_MATCH'>('CLEAR');
 
   const createClient = useCreateClient();
 
@@ -89,24 +95,33 @@ export function NewClientWizard({ open, onClose }: Props) {
         }
       }
 
-      // Sanctions screening happens server-side on creation; show result
-      const outcome = client.sanctionsStatus ?? 'CLEAR';
-      setScreening({ outcome, hitCount: client.sanctionsHitCount });
+      if (sanctionMode === 'skip') {
+        setScreening({ outcome: 'PENDING' });
+        return;
+      }
+
+      if (sanctionMode === 'manual') {
+        const res = await manualSanctionsRecord(client.id, manualOutcome);
+        setScreening({ outcome: res.outcome });
+        return;
+      }
+
+      // auto: call actual screening API
+      const res = await runSanctionsScreen(client.id);
+      setScreening({ outcome: res.outcome, hitCount: res.hitCount });
     } finally {
       setScreeningLoading(false);
     }
   }
 
   function handleClose() {
-    if (screening) {
-      // Navigate to new client page
-      onClose();
-    }
     setStep(0);
     setDetails(EMPTY_DETAILS);
     setFiles({});
     setUploadedIds({});
     setScreening(null);
+    setSanctionMode('auto');
+    setManualOutcome('CLEAR');
     onClose();
   }
 
@@ -427,12 +442,80 @@ export function NewClientWizard({ open, onClose }: Props) {
                   </div>
                 ))}
               </div>
-              <div className="bg-amber-50 border border-amber-200 rounded-xl p-3 text-xs text-amber-700 flex items-start gap-2">
-                <span className="text-base shrink-0">🔍</span>
-                <p>
-                  On submit, an automatic sanctions screen will be run against global watchlists.
-                  This may take a few seconds.
-                </p>
+              <div className="space-y-2">
+                <p className="text-xs font-medium text-gray-700">Sanctions check:</p>
+                {(
+                  [
+                    {
+                      value: 'auto',
+                      label: '🔄 Run automatic screen',
+                      desc: 'Check against global watchlists via Dilisense',
+                    },
+                    {
+                      value: 'manual',
+                      label: '✅ Recorded manually',
+                      desc: 'I checked on the provider site — select outcome below',
+                    },
+                    {
+                      value: 'skip',
+                      label: '⏭ Skip for now',
+                      desc: 'Onboard client; screen can be run later from the client profile',
+                    },
+                  ] as { value: 'auto' | 'manual' | 'skip'; label: string; desc: string }[]
+                ).map(({ value, label, desc }) => (
+                  <label
+                    key={value}
+                    className={cn(
+                      'flex items-start gap-3 rounded-lg border p-3 cursor-pointer transition-colors',
+                      sanctionMode === value
+                        ? 'border-gold bg-gold-light/20'
+                        : 'border-gray-200 hover:border-gray-300',
+                    )}
+                  >
+                    <input
+                      type="radio"
+                      name="sanctionMode"
+                      value={value}
+                      checked={sanctionMode === value}
+                      onChange={() => setSanctionMode(value)}
+                      className="mt-0.5"
+                    />
+                    <div>
+                      <p className="text-sm font-medium text-gray-800">{label}</p>
+                      <p className="text-xs text-gray-500">{desc}</p>
+                    </div>
+                  </label>
+                ))}
+                {sanctionMode === 'manual' && (
+                  <div className="ml-6 flex gap-3 flex-wrap">
+                    {(
+                      [
+                        { value: 'CLEAR', label: '✅ Clear' },
+                        { value: 'POSSIBLE_MATCH', label: '⚠️ Possible Match' },
+                        { value: 'HIT', label: '🚨 Hit' },
+                      ] as { value: 'CLEAR' | 'POSSIBLE_MATCH' | 'HIT'; label: string }[]
+                    ).map(({ value, label }) => (
+                      <label
+                        key={value}
+                        className={cn(
+                          'flex items-center gap-1.5 text-xs rounded-lg border px-3 py-1.5 cursor-pointer',
+                          manualOutcome === value
+                            ? 'border-gold bg-gold-light/20 font-semibold'
+                            : 'border-gray-200',
+                        )}
+                      >
+                        <input
+                          type="radio"
+                          name="manualOutcome"
+                          value={value}
+                          checked={manualOutcome === value}
+                          onChange={() => setManualOutcome(value)}
+                        />
+                        {label}
+                      </label>
+                    ))}
+                  </div>
+                )}
               </div>
             </div>
           )}

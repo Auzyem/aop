@@ -11,6 +11,7 @@ import {
   RejectKycDocSchema,
   RejectKycSchema,
   SetFlagSchema,
+  ManualScreeningSchema,
 } from './clients.schemas.js';
 import {
   createClientHandler,
@@ -27,6 +28,7 @@ import {
   rejectFullKycHandler,
   screenClientHandler,
   batchScreenHandler,
+  manualScreeningHandler,
   setEddFlagHandler,
   setPepFlagHandler,
 } from './clients.controller.js';
@@ -142,9 +144,16 @@ clientsRouter.post(
 // Rate limited — 10/hour per user (API cost protection)
 clientsRouter.post(
   '/:id/screening',
-  ...requireRole(ROLES.COMPLIANCE_OFFICER),
+  ...requireRole(ROLES.COMPLIANCE_OFFICER, ROLES.ADMIN, ROLES.TRADE_MANAGER),
   sanctionsRateLimit,
   screenClientHandler,
+);
+
+clientsRouter.post(
+  '/:id/screening/manual',
+  ...requireRole(ROLES.COMPLIANCE_OFFICER, ROLES.ADMIN, ROLES.TRADE_MANAGER),
+  validateRequest(ManualScreeningSchema),
+  manualScreeningHandler,
 );
 
 // ---------------------------------------------------------------------------

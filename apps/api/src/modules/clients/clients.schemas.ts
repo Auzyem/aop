@@ -71,6 +71,15 @@ export const RejectKycSchema = z.object({
 });
 
 // ---------------------------------------------------------------------------
+// Sanctions screening
+// ---------------------------------------------------------------------------
+
+export const ManualScreeningSchema = z.object({
+  outcome: z.enum(['CLEAR', 'HIT', 'POSSIBLE_MATCH']),
+  note: z.string().max(500).optional(),
+});
+
+// ---------------------------------------------------------------------------
 // Flags
 // ---------------------------------------------------------------------------
 
@@ -89,3 +98,4 @@ export type UploadKycDocInput = z.infer<typeof UploadKycDocSchema>;
 export type RejectKycDocInput = z.infer<typeof RejectKycDocSchema>;
 export type RejectKycInput = z.infer<typeof RejectKycSchema>;
 export type SetFlagInput = z.infer<typeof SetFlagSchema>;
+export type ManualScreeningInput = z.infer<typeof ManualScreeningSchema>;

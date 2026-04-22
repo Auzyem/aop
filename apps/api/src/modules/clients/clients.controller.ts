@@ -18,7 +18,7 @@ import {
   rejectFullKyc,
 } from './kyc.service.js';
 import { uploadKycDocument } from './document.service.js';
-import { screenClient, batchScreenAll } from './sanctions.service.js';
+import { screenClient, batchScreenAll, recordManualScreening } from './sanctions.service.js';
 import { ListClientsQuerySchema } from './clients.schemas.js';
 
 // ---------------------------------------------------------------------------
@@ -230,6 +230,24 @@ export async function batchScreenHandler(
   try {
     const result = await batchScreenAll(req.user!.id);
     sendSuccess(res, result);
+  } catch (err) {
+    next(err);
+  }
+}
+
+export async function manualScreeningHandler(
+  req: Request,
+  res: Response,
+  next: NextFunction,
+): Promise<void> {
+  try {
+    const result = await recordManualScreening(
+      req.params.id,
+      req.user!.id,
+      req.body.outcome,
+      req.body.note,
+    );
+    sendSuccess(res, result, 201);
   } catch (err) {
     next(err);
   }

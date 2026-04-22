@@ -47,6 +47,15 @@ export async function runSanctionsScreen(id: string) {
   };
 }
 
+export async function manualSanctionsRecord(
+  id: string,
+  outcome: 'CLEAR' | 'HIT' | 'POSSIBLE_MATCH',
+  note?: string,
+) {
+  const res = await apiClient.post(`/clients/${id}/screening/manual`, { outcome, note });
+  return res.data.data as { outcome: string; provider: string; screenedAt: string };
+}
+
 export async function getClientKyc(id: string) {
   const res = await apiClient.get(`/clients/${id}/kyc`);
   return res.data.data;
