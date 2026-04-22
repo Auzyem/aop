@@ -79,7 +79,7 @@ jobs:
             --db-snapshot-identifier "$SNAPSHOT_ID" \
             --tags Key=DeployTag,Value=${{ env.IMAGE_TAG }} Key=Environment,Value=staging
           echo "Snapshot triggered (async) — proceeding with migration"
-        continue-on-error: false
+        continue-on-error: true
 
       - name: Run DB migrations
         env:
