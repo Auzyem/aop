@@ -100,7 +100,7 @@ export default function TradeDeskDashboardPage() {
   const amFix = currentPrices?.AM_FIX?.price ? Number(currentPrices.AM_FIX.price) : null;
   const pmFix = currentPrices?.PM_FIX?.price ? Number(currentPrices.PM_FIX.price) : null;
   const spot =
-    livePrice?.priceUsdPerTroyOz ??
+    livePrice?.priceUsdPerKg ??
     (currentPrices?.SPOT?.price ? Number(currentPrices.SPOT.price) : null);
 
   return (
@@ -117,7 +117,7 @@ export default function TradeDeskDashboardPage() {
           <StatTile
             label="Current Spot"
             value={spot ? usd(spot) : '—'}
-            sub={spot ? `${usd(spot * KG_TO_TROY_OZ)}/kg` : '/toz'}
+            sub={spot ? `${usd(spot / KG_TO_TROY_OZ)}/toz` : '/kg'}
             accent
           />
           <StatTile label="AM Fix" value={amFix ? usd(amFix) : '—'} sub="London" />
@@ -149,12 +149,12 @@ export default function TradeDeskDashboardPage() {
                   width={72}
                 />
                 <Tooltip
-                  formatter={(v: number) => [`${usd(v)}/toz`, 'SPOT']}
+                  formatter={(v: number) => [`${usd(v)}/kg`, 'SPOT']}
                   contentStyle={{ fontSize: 12 }}
                 />
                 {livePrice && (
                   <ReferenceLine
-                    y={livePrice.priceUsdPerTroyOz}
+                    y={livePrice.priceUsdPerKg}
                     stroke="#C9963F"
                     strokeDasharray="4 4"
                     label={{

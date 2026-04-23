@@ -2,7 +2,7 @@ import { apiClient } from './client';
 
 export async function getCurrentPrice() {
   const res = await apiClient.get('/lme/price/current');
-  return res.data.data as { priceUsdPerTroyOz: number; recordedAt: string; stale: boolean };
+  return res.data.data as { priceUsdPerKg: number; recordedAt: string; stale: boolean };
 }
 
 export async function getPriceHistory(params?: Record<string, unknown>) {

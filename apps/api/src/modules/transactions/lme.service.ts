@@ -2,14 +2,11 @@ import { prisma } from '@aop/db';
 import { logger } from '@aop/utils';
 
 export interface LmePrice {
-  priceUsdPerTroyOz: number;
+  priceUsdPerKg: number;
   source: string;
   recordedAt: Date;
   priceType: string;
 }
-
-/** Conversion factor: 1 troy ounce = 31.1035 grams */
-export const TROY_OZ_PER_GRAM = 31.1035;
 
 /**
  * Returns the most recent gold spot price.
@@ -23,7 +20,7 @@ export async function getCurrentPrice(): Promise<LmePrice> {
 
   if (latest) {
     return {
-      priceUsdPerTroyOz: Number(latest.priceUsdPerTroyOz),
+      priceUsdPerKg: Number(latest.priceUsdPerKg),
       source: latest.source,
       recordedAt: latest.recordedAt,
       priceType: latest.priceType,
@@ -32,7 +29,7 @@ export async function getCurrentPrice(): Promise<LmePrice> {
 
   logger.warn('No LME price records in DB — using hardcoded fallback value');
   return {
-    priceUsdPerTroyOz: 2_350,
+    priceUsdPerKg: 107_500,
     source: 'FALLBACK',
     recordedAt: new Date(),
     priceType: 'SPOT',

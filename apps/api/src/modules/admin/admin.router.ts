@@ -67,7 +67,11 @@ adminRouter.delete('/users/:id', ...requireRole('SUPER_ADMIN', 'ADMIN'), deactiv
 // ---------------------------------------------------------------------------
 
 adminRouter.get('/agents', ...requireRole(...HEAD_OFFICE_ROLES), listAgentsHandler);
-adminRouter.post('/agents', ...requireRole('SUPER_ADMIN', 'ADMIN'), createAgentHandler);
+adminRouter.post(
+  '/agents',
+  ...requireRole('SUPER_ADMIN', 'ADMIN', 'COMPLIANCE_OFFICER', 'TRADE_MANAGER'),
+  createAgentHandler,
+);
 
 // Sub-routes BEFORE generic /:id
 adminRouter.get(

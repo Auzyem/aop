@@ -1,7 +1,7 @@
 import { PDFDocument, StandardFonts, rgb } from 'pdf-lib';
 import { prisma } from '@aop/db';
 import type { LmePriceType } from '@aop/db';
-import { NotFoundError, ValidationError, TROY_OZ_PER_GRAM, COMPANY_FEE_DEFAULT } from '@aop/utils';
+import { NotFoundError, ValidationError, COMPANY_FEE_DEFAULT } from '@aop/utils';
 import { logger } from '@aop/utils';
 import type { AuthenticatedUser } from '@aop/types';
 import { uploadToS3 } from '../../lib/s3.js';
@@ -41,7 +41,7 @@ export async function lockTransactionPrice(
   if (!priceRecord) {
     priceRecord = await prisma.lmePriceRecord.create({
       data: {
-        priceUsdPerTroyOz: dto.lockedPrice,
+        priceUsdPerKg: dto.lockedPrice,
         priceType: dto.priceType as LmePriceType,
         source: 'MANUAL_LOCK',
         recordedAt: now,
@@ -135,8 +135,8 @@ async function generateValuationDisclosure(
   y -= 6;
 
   const fineGrams = Number(tx.goldWeightFine);
-  const fineWeightTroyOz = fineGrams / TROY_OZ_PER_GRAM;
-  const grossValueUsd = fineWeightTroyOz * dto.lockedPrice;
+  const fineWeightKg = fineGrams / 1000;
+  const grossValueUsd = fineWeightKg * dto.lockedPrice;
   const totalCosts = tx.costItems.reduce(
     (s, c) => s + (c.estimatedUsd ? Number(c.estimatedUsd) : 0),
     0,
@@ -144,8 +144,8 @@ async function generateValuationDisclosure(
   const companyFeeUsd = grossValueUsd * COMPANY_FEE_DEFAULT;
   const estimatedNet = grossValueUsd - totalCosts - companyFeeUsd;
 
-  field('Fine Weight', `${fineGrams.toFixed(4)} g  (${fineWeightTroyOz.toFixed(4)} troy oz)`);
-  field('Locked Price', `USD ${dto.lockedPrice.toFixed(2)} / troy oz`);
+  field('Fine Weight', `${fineGrams.toFixed(4)} g  (${fineWeightKg.toFixed(6)} kg)`);
+  field('Locked Price', `USD ${dto.lockedPrice.toFixed(2)} / kg`);
   field('Price Type', dto.priceType);
   field('Price Source', 'LME / Metals-API');
   y -= 6;

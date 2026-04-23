@@ -97,10 +97,10 @@ function OverviewTab({ tx, id }: { tx: Record<string, unknown>; id: string }) {
   const { data: gateChecklist, isLoading: gateLoading } = usePhaseChecklist(id);
   const advancePhase = useAdvancePhase(id);
 
-  const livePrice = wsPrice?.priceUsdPerTroyOz ?? Number(tx.lmePriceLocked ?? 0);
+  const livePrice = wsPrice?.priceUsdPerKg ?? Number(tx.lmePriceLocked ?? 0);
   const fine = Number(tx.goldWeightFine ?? 0);
   const toz = fine * KG_TO_TROY_OZ;
-  const grossValue = toz * livePrice;
+  const grossValue = fine * livePrice;
   const netValue = grossValue * 0.985;
 
   const checklist = gateChecklist ?? [];

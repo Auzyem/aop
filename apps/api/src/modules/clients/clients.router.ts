@@ -69,7 +69,7 @@ clientsRouter.post(
 
 clientsRouter.post(
   '/',
-  ...requireRole(ROLES.OPERATIONS, ROLES.ADMIN),
+  ...requireRole(ROLES.OPERATIONS, ROLES.ADMIN, ROLES.COMPLIANCE_OFFICER, ROLES.TRADE_MANAGER),
   validateRequest(CreateClientSchema),
   createClientHandler,
 );
@@ -101,7 +101,7 @@ clientsRouter.get('/:id/screenings', ...requireRole(...ALL_ROLES), getScreenings
 
 clientsRouter.post(
   '/:id/kyc/documents',
-  ...requireRole(ROLES.OPERATIONS, ROLES.COMPLIANCE_OFFICER),
+  ...requireRole(ROLES.OPERATIONS, ROLES.ADMIN, ROLES.COMPLIANCE_OFFICER, ROLES.TRADE_MANAGER),
   upload.single('file'),
   validateRequest(UploadKycDocSchema),
   uploadKycDocumentHandler,

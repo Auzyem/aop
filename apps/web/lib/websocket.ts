@@ -40,7 +40,7 @@ export function useWebSocket(token: string | null): { socket: Socket | null; con
 }
 
 export interface LmePriceData {
-  priceUsdPerTroyOz: number;
+  priceUsdPerKg: number;
   recordedAt: string;
   stale?: boolean;
 }

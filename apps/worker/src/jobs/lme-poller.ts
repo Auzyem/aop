@@ -3,7 +3,6 @@ import type { Redis } from 'ioredis';
 import axios from 'axios';
 import { prisma } from '@aop/db';
 import { logger } from '@aop/utils';
-import { TROY_OZ_PER_GRAM } from '@aop/utils';
 import type { EmailJobData } from './email.processor.js';
 
 // ---------------------------------------------------------------------------
@@ -45,18 +44,14 @@ export function isMarketHours(now: Date = new Date()): boolean {
 // metals.dev integration
 // ---------------------------------------------------------------------------
 
-interface MetalsDevSpotResponse {
-  metals: {
-    gold: number; // USD per troy oz
-    [key: string]: number;
-  };
-  currency: string; // 'USD'
-  [key: string]: unknown;
+interface MetalsDevLatestResponse {
+  gold: number; // USD per kg
+  [key: string]: number;
 }
 
 /**
- * Fetch spot gold price from metals.dev /v1/metal/spot endpoint.
- * Price is returned directly in USD per troy oz — no unit conversion needed.
+ * Fetch spot gold price from metals.dev /v1/latest endpoint with unit=kg.
+ * Price is returned directly in USD per kg — no unit conversion needed.
  */
 async function fetchFromMetalsDev(): Promise<{ priceUsd: number; timestamp: Date } | null> {
   const apiKey = process.env.METALS_DEV_API_KEY;
@@ -65,12 +60,12 @@ async function fetchFromMetalsDev(): Promise<{ priceUsd: number; timestamp: Date
     return null;
   }
 
-  const resp = await axios.get<MetalsDevSpotResponse>(
-    `https://api.metals.dev/v1/metal/spot?api_key=${apiKey}&metal=gold&currency=USD`,
+  const resp = await axios.get<MetalsDevLatestResponse>(
+    `https://api.metals.dev/v1/latest?api_key=${apiKey}&currency=USD&unit=kg`,
     { timeout: 10_000 },
   );
 
-  const price = resp.data.metals?.gold;
+  const price = resp.data.gold;
   if (typeof price !== 'number' || price <= 0) {
     logger.warn({ data: resp.data }, 'metals.dev returned unexpected response');
     return null;
@@ -110,7 +105,7 @@ async function runAlertChecks(
           where: { recordedAt: { lte: tx.createdAt } },
           orderBy: { recordedAt: 'desc' },
         });
-        refPrice = priceAtCreation ? Number(priceAtCreation.priceUsdPerTroyOz) : null;
+        refPrice = priceAtCreation ? Number(priceAtCreation.priceUsdPerKg) : null;
       }
 
       if (!refPrice) continue;
@@ -118,10 +113,10 @@ async function runAlertChecks(
       const changePct = Math.abs((newPrice - refPrice) / refPrice) * 100;
       if (changePct < PRICE_ALERT_THRESHOLD_PCT) continue;
 
-      const fineWeightTroyOz = tx.goldWeightFine
-        ? Number(tx.goldWeightFine) / TROY_OZ_PER_GRAM
-        : Number(tx.goldWeightGross) / TROY_OZ_PER_GRAM;
-      const exposureUsd = fineWeightTroyOz * newPrice;
+      const fineWeightKg = tx.goldWeightFine
+        ? Number(tx.goldWeightFine) / 1000
+        : Number(tx.goldWeightGross) / 1000;
+      const exposureUsd = fineWeightKg * newPrice;
 
       const direction: 'UP' | 'DOWN' = newPrice > refPrice ? 'UP' : 'DOWN';
       const alertedAt = new Date().toISOString();
@@ -243,16 +238,16 @@ export function createLmePollerProcessor(
       const last = await prisma.lmePriceRecord.findFirst({ orderBy: { recordedAt: 'desc' } });
       if (!last) {
         logger.warn('LME poller: no price data available — using hardcoded fallback');
-        priceUsd = 2_350;
+        priceUsd = 107_500;
         source = 'FALLBACK';
         timestamp = now;
       } else {
-        priceUsd = Number(last.priceUsdPerTroyOz);
+        priceUsd = Number(last.priceUsdPerKg);
         source = last.source;
         timestamp = last.recordedAt;
         // Mark as stale — don't re-save to DB
         const staleData = {
-          priceUsdPerTroyOz: priceUsd,
+          priceUsdPerKg: priceUsd,
           source,
           priceType: last.priceType,
           recordedAt: timestamp.toISOString(),
@@ -270,7 +265,7 @@ export function createLmePollerProcessor(
     try {
       await prisma.lmePriceRecord.create({
         data: {
-          priceUsdPerTroyOz: priceUsd,
+          priceUsdPerKg: priceUsd,
           priceType: priceTypeToStore,
           source,
           recordedAt: timestamp,
@@ -283,7 +278,7 @@ export function createLmePollerProcessor(
     // Update Redis cache (always with latest SPOT price for feed consumers)
     if (!isFixCapture) {
       const cacheData = {
-        priceUsdPerTroyOz: priceUsd,
+        priceUsdPerKg: priceUsd,
         source,
         priceType: priceTypeToStore,
         recordedAt: timestamp.toISOString(),

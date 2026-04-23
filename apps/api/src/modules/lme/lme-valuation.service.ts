@@ -1,6 +1,6 @@
 import { prisma } from '@aop/db';
 import { NotFoundError } from '@aop/utils';
-import { TROY_OZ_PER_GRAM, COMPANY_FEE_DEFAULT } from '@aop/utils';
+import { COMPANY_FEE_DEFAULT } from '@aop/utils';
 import type { AuthenticatedUser } from '@aop/types';
 import { getCurrentLmePrice } from './lme-feed.service.js';
 
@@ -11,8 +11,8 @@ import { getCurrentLmePrice } from './lme-feed.service.js';
 export interface ValuationInput {
   /** Fine weight in grams */
   goldWeightFineGrams: number;
-  /** LME spot or locked price in USD/troy oz */
-  lmePricePerTroyOz: number;
+  /** LME spot or locked price in USD/kg */
+  lmePricePerKg: number;
   /** Sum of all CostItem.estimatedUsd */
   totalEstimatedCostsUsd: number;
   /** Company fee as a fraction, e.g. 0.015 = 1.5% */
@@ -21,8 +21,8 @@ export interface ValuationInput {
 
 export interface ValuationResult {
   fineWeightGrams: number;
-  fineWeightTroyOz: number;
-  lmePricePerTroyOz: number;
+  fineWeightKg: number;
+  lmePricePerKg: number;
   grossValueUsd: number;
   totalEstimatedCostsUsd: number;
   companyFeeUsd: number;
@@ -35,15 +35,15 @@ export interface ValuationResult {
  * Exported for unit testing.
  */
 export function computeValuation(input: ValuationInput): ValuationResult {
-  const fineWeightTroyOz = input.goldWeightFineGrams / TROY_OZ_PER_GRAM;
-  const grossValueUsd = fineWeightTroyOz * input.lmePricePerTroyOz;
+  const fineWeightKg = input.goldWeightFineGrams / 1000;
+  const grossValueUsd = fineWeightKg * input.lmePricePerKg;
   const companyFeeUsd = grossValueUsd * input.companyFeeRate;
   const estimatedNetUsd = grossValueUsd - input.totalEstimatedCostsUsd - companyFeeUsd;
 
   return {
     fineWeightGrams: input.goldWeightFineGrams,
-    fineWeightTroyOz,
-    lmePricePerTroyOz: input.lmePricePerTroyOz,
+    fineWeightKg,
+    lmePricePerKg: input.lmePricePerKg,
     grossValueUsd,
     totalEstimatedCostsUsd: input.totalEstimatedCostsUsd,
     companyFeeUsd,
@@ -70,17 +70,17 @@ export async function getTransactionValuation(txnId: string, _actor: Authenticat
   if (!tx) throw new NotFoundError('Transaction not found');
 
   // Determine price source
-  let lmePricePerTroyOz: number;
+  let lmePricePerKg: number;
   let priceSource: 'LOCKED' | 'LIVE';
   let priceRecordedAt: string;
 
   if (tx.lmePriceLocked) {
-    lmePricePerTroyOz = Number(tx.lmePriceLocked);
+    lmePricePerKg = Number(tx.lmePriceLocked);
     priceSource = 'LOCKED';
     priceRecordedAt = tx.priceLockedAt?.toISOString() ?? new Date().toISOString();
   } else {
     const live = await getCurrentLmePrice();
-    lmePricePerTroyOz = live.priceUsdPerTroyOz;
+    lmePricePerKg = live.priceUsdPerKg;
     priceSource = 'LIVE';
     priceRecordedAt = live.recordedAt;
   }
@@ -98,7 +98,7 @@ export async function getTransactionValuation(txnId: string, _actor: Authenticat
 
   const valuation = computeValuation({
     goldWeightFineGrams: fineGrams,
-    lmePricePerTroyOz,
+    lmePricePerKg,
     totalEstimatedCostsUsd: totalCosts,
     companyFeeRate,
   });

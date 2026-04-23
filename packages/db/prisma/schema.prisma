@@ -632,11 +632,11 @@ model Settlement {
 // 12. LMEPriceRecord
 // -----------------------------------------------------------------------------
 model LmePriceRecord {
-  id                String       @id @default(cuid())
-  priceUsdPerTroyOz Decimal      @db.Decimal(20, 6)
-  priceType         LmePriceType
-  source            String
-  recordedAt        DateTime
+  id           String       @id @default(cuid())
+  priceUsdPerKg Decimal      @db.Decimal(20, 6)
+  priceType    LmePriceType
+  source       String
+  recordedAt   DateTime
 
   /// Price type + timestamp must be unique (no duplicate fixings for same session)
   @@unique([recordedAt, priceType])

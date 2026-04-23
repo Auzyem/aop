@@ -38,8 +38,6 @@ const SLA_DAYS: Record<string, number> = {
   PHASE_6: 3,
   PHASE_7: 2,
 };
-const KG_TO_TROY_OZ = 32.1507;
-
 function countryFlag(cc: string): string {
   if (!cc || cc.length !== 2) return '🌍';
   return [...cc.toUpperCase()]
@@ -94,10 +92,9 @@ export default function DashboardPage() {
       const now = new Date();
       return d.getMonth() === now.getMonth() && d.getFullYear() === now.getFullYear();
     });
-    const currentPrice =
-      wsPrice?.priceUsdPerTroyOz ?? lmeData?.currentPrice?.priceUsdPerTroyOz ?? 0;
+    const currentPrice = wsPrice?.priceUsdPerKg ?? lmeData?.currentPrice?.priceUsdPerKg ?? 0;
     const totalVolume = active.reduce((s: number, t: Record<string, unknown>) => {
-      return s + Number(t.goldWeightFine ?? 0) * KG_TO_TROY_OZ * currentPrice;
+      return s + Number(t.goldWeightFine ?? 0) * currentPrice;
     }, 0);
     return {
       active: active.length,
@@ -135,7 +132,7 @@ export default function DashboardPage() {
     if (wsPrice && history.length > 0) {
       const now = new Date().toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' });
       if (history[history.length - 1]?.time !== now) {
-        history.push({ time: now, price: wsPrice.priceUsdPerTroyOz, priceType: 'INTRADAY' });
+        history.push({ time: now, price: wsPrice.priceUsdPerKg, priceType: 'INTRADAY' });
       }
     }
     return { chartData: history, amFixTimes: am, pmFixTimes: pm };
@@ -265,8 +262,8 @@ export default function DashboardPage() {
             <h2 className="text-base font-semibold text-aop-dark">LME Gold (24h)</h2>
             {wsPrice && (
               <span className="text-xs font-mono font-semibold text-gold">
-                ${wsPrice.priceUsdPerTroyOz.toLocaleString('en-US', { minimumFractionDigits: 2 })}
-                /toz
+                ${wsPrice.priceUsdPerKg.toLocaleString('en-US', { minimumFractionDigits: 2 })}
+                /kg
               </span>
             )}
           </div>

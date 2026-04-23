@@ -145,7 +145,7 @@ async function main() {
     },
     update: {},
     create: {
-      priceUsdPerTroyOz: 3152.45,
+      priceUsdPerKg: 101_379,
       priceType: LmePriceType.AM_FIX,
       source: 'LBMA',
       recordedAt: new Date('2026-03-21T10:30:00Z'),
@@ -161,7 +161,7 @@ async function main() {
     },
     update: {},
     create: {
-      priceUsdPerTroyOz: 3158.8,
+      priceUsdPerKg: 101_581,
       priceType: LmePriceType.PM_FIX,
       source: 'LBMA',
       recordedAt: new Date('2026-03-21T15:00:00Z'),
@@ -177,7 +177,7 @@ async function main() {
     },
     update: {},
     create: {
-      priceUsdPerTroyOz: 3155.1,
+      priceUsdPerKg: 101_476,
       priceType: LmePriceType.SPOT,
       source: 'Kitco',
       recordedAt: new Date('2026-03-21T12:00:00Z'),
@@ -185,7 +185,7 @@ async function main() {
   });
 
   console.log(
-    `✅  LME prices: AM $${amFix.priceUsdPerTroyOz} | Spot $${spot.priceUsdPerTroyOz} | PM $${pmFix.priceUsdPerTroyOz}`,
+    `✅  LME prices: AM $${amFix.priceUsdPerKg} | Spot $${spot.priceUsdPerKg} | PM $${pmFix.priceUsdPerKg}`,
   );
 
   // ---------------------------------------------------------------------------

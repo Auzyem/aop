@@ -8,12 +8,12 @@ export async function getTradeDeskDashboard(_actor: AuthenticatedUser) {
     prisma.lmePriceRecord.findFirst({
       where: { priceType: 'AM_FIX' },
       orderBy: { recordedAt: 'desc' },
-      select: { priceUsdPerTroyOz: true, recordedAt: true },
+      select: { priceUsdPerKg: true, recordedAt: true },
     }),
     prisma.lmePriceRecord.findFirst({
       where: { priceType: 'PM_FIX' },
       orderBy: { recordedAt: 'desc' },
-      select: { priceUsdPerTroyOz: true, recordedAt: true },
+      select: { priceUsdPerKg: true, recordedAt: true },
     }),
     prisma.transaction.findMany({
       where: { status: { notIn: ['CANCELLED', 'SETTLED'] } },
@@ -45,9 +45,9 @@ export async function getTradeDeskDashboard(_actor: AuthenticatedUser) {
 
   return {
     currentPrices: {
-      SPOT: currentPrice ? { price: Number(currentPrice.priceUsdPerTroyOz) } : null,
-      AM_FIX: latestAmFix ? { price: Number(latestAmFix.priceUsdPerTroyOz) } : null,
-      PM_FIX: latestPmFix ? { price: Number(latestPmFix.priceUsdPerTroyOz) } : null,
+      SPOT: currentPrice ? { price: Number(currentPrice.priceUsdPerKg) } : null,
+      AM_FIX: latestAmFix ? { price: Number(latestAmFix.priceUsdPerKg) } : null,
+      PM_FIX: latestPmFix ? { price: Number(latestPmFix.priceUsdPerKg) } : null,
     },
     activeTransactions: {
       total: activeTxns.length,

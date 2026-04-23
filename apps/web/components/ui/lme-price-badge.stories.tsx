@@ -11,7 +11,7 @@ export default meta;
 type Story = StoryObj<typeof LMEPriceBadge>;
 
 const basePrice = {
-  priceUsdPerTroyOz: 2345.67,
+  priceUsdPerKg: 107_500,
   recordedAt: new Date().toISOString(),
 };
 
@@ -20,20 +20,20 @@ export const Loading: Story = {
 };
 
 export const Live: Story = {
-  args: { price: basePrice, previousPrice: 2320.0 },
+  args: { price: basePrice, previousPrice: 106_200 },
 };
 
 export const PriceUp: Story = {
   args: {
-    price: { ...basePrice, priceUsdPerTroyOz: 2345.67 },
-    previousPrice: 2300.0,
+    price: { ...basePrice, priceUsdPerKg: 107_500 },
+    previousPrice: 105_000,
   },
 };
 
 export const PriceDown: Story = {
   args: {
-    price: { ...basePrice, priceUsdPerTroyOz: 2300.0 },
-    previousPrice: 2345.67,
+    price: { ...basePrice, priceUsdPerKg: 105_000 },
+    previousPrice: 107_500,
   },
 };
 

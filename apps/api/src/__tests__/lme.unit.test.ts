@@ -226,7 +226,7 @@ describe('getCurrentLmePrice', () => {
   describe('Redis cache hit', () => {
     it('returns cached price as fresh when cachedAt is within 5 minutes', async () => {
       const cachedData = {
-        priceUsdPerTroyOz: 2_350,
+        priceUsdPerKg: 75_554,
         priceType: 'SPOT',
         source: 'LBMA',
         recordedAt: new Date().toISOString(),
@@ -237,7 +237,7 @@ describe('getCurrentLmePrice', () => {
 
       const result = await getCurrentLmePrice();
 
-      expect(result.priceUsdPerTroyOz).toBe(2_350);
+      expect(result.priceUsdPerKg).toBe(75_554);
       expect(result.stale).toBe(false);
       expect(result.staleSince).toBeUndefined();
     });
@@ -245,7 +245,7 @@ describe('getCurrentLmePrice', () => {
     it('marks cached price as stale when cachedAt is older than 5 minutes', async () => {
       const sixMinutesAgo = new Date(Date.now() - 6 * 60 * 1000).toISOString();
       const cachedData = {
-        priceUsdPerTroyOz: 2_300,
+        priceUsdPerKg: 73_947,
         priceType: 'SPOT',
         source: 'LBMA',
         recordedAt: sixMinutesAgo,
@@ -262,7 +262,7 @@ describe('getCurrentLmePrice', () => {
 
     it('propagates stale=true from cached data even if within time window', async () => {
       const cachedData = {
-        priceUsdPerTroyOz: 2_300,
+        priceUsdPerKg: 73_947,
         priceType: 'SPOT',
         source: 'LBMA',
         recordedAt: new Date().toISOString(),
@@ -283,7 +283,7 @@ describe('getCurrentLmePrice', () => {
       mockRedisGet.mockResolvedValueOnce(null);
       const freshRecordedAt = new Date(Date.now() - 2 * 60 * 1000); // 2 min ago
       mockPrismaFindFirst.mockResolvedValueOnce({
-        priceUsdPerTroyOz: 2_400,
+        priceUsdPerKg: 77_162,
         priceType: 'SPOT',
         source: 'LBMA',
         recordedAt: freshRecordedAt,
@@ -291,7 +291,7 @@ describe('getCurrentLmePrice', () => {
 
       const result = await getCurrentLmePrice();
 
-      expect(result.priceUsdPerTroyOz).toBe(2_400);
+      expect(result.priceUsdPerKg).toBe(77_162);
       expect(result.stale).toBe(false);
     });
 
@@ -299,7 +299,7 @@ describe('getCurrentLmePrice', () => {
       mockRedisGet.mockResolvedValueOnce(null);
       const oldRecordedAt = new Date(Date.now() - 10 * 60 * 1000); // 10 min ago
       mockPrismaFindFirst.mockResolvedValueOnce({
-        priceUsdPerTroyOz: 2_300,
+        priceUsdPerKg: 73_947,
         priceType: 'SPOT',
         source: 'LBMA',
         recordedAt: oldRecordedAt,
@@ -319,27 +319,27 @@ describe('getCurrentLmePrice', () => {
       mockRedisGet.mockRejectedValueOnce(new Error('Redis connection lost'));
       const recordedAt = new Date(Date.now() - 1 * 60 * 1000); // 1 min ago
       mockPrismaFindFirst.mockResolvedValueOnce({
-        priceUsdPerTroyOz: 2_380,
+        priceUsdPerKg: 76_519,
         priceType: 'SPOT',
         source: 'MANUAL',
         recordedAt,
       });
 
       const result = await getCurrentLmePrice();
-      expect(result.priceUsdPerTroyOz).toBe(2_380);
+      expect(result.priceUsdPerKg).toBe(76_519);
     });
   });
 
   // ── DB miss → hardcoded fallback ─────────────────────────────────────────
 
   describe('DB miss → hardcoded fallback', () => {
-    it('returns 2350 SPOT FALLBACK when Redis and DB both miss', async () => {
+    it('returns 107_500 SPOT FALLBACK when Redis and DB both miss', async () => {
       mockRedisGet.mockResolvedValueOnce(null);
       mockPrismaFindFirst.mockResolvedValueOnce(null);
 
       const result = await getCurrentLmePrice();
 
-      expect(result.priceUsdPerTroyOz).toBe(2_350);
+      expect(result.priceUsdPerKg).toBe(107_500);
       expect(result.priceType).toBe('SPOT');
       expect(result.source).toBe('FALLBACK');
       expect(result.stale).toBe(true);

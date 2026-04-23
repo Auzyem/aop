@@ -12,7 +12,7 @@ export function LMEPriceBadge({ price, previousPrice }: LMEPriceBadgeProps) {
   const [pulse, setPulse] = useState(false);
 
   useEffect(() => {
-    if (price && previousPrice && price.priceUsdPerTroyOz !== previousPrice) {
+    if (price && previousPrice && price.priceUsdPerKg !== previousPrice) {
       setPulse(true);
       const t = setTimeout(() => setPulse(false), 1500);
       return () => clearTimeout(t);
@@ -28,9 +28,7 @@ export function LMEPriceBadge({ price, previousPrice }: LMEPriceBadgeProps) {
     );
   }
 
-  const change = previousPrice
-    ? ((price.priceUsdPerTroyOz - previousPrice) / previousPrice) * 100
-    : 0;
+  const change = previousPrice ? ((price.priceUsdPerKg - previousPrice) / previousPrice) * 100 : 0;
   const isUp = change > 0;
 
   return (
@@ -45,11 +43,11 @@ export function LMEPriceBadge({ price, previousPrice }: LMEPriceBadgeProps) {
       <div className={cn('w-2 h-2 rounded-full', price.stale ? 'bg-gray-400' : 'bg-green-500')} />
       <span className="text-sm font-mono font-semibold text-aop-dark">
         USD{' '}
-        {price.priceUsdPerTroyOz.toLocaleString('en-US', {
+        {price.priceUsdPerKg.toLocaleString('en-US', {
           minimumFractionDigits: 2,
           maximumFractionDigits: 2,
         })}
-        /toz
+        /kg
       </span>
       {change !== 0 && (
         <span className={cn('text-xs font-medium', isUp ? 'text-green-600' : 'text-red-600')}>

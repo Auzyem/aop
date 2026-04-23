@@ -10,7 +10,7 @@ import {
   SLA_TARGETS_DAYS,
   type GateContext,
 } from './phase-gate.service.js';
-import { getCurrentPrice, TROY_OZ_PER_GRAM } from './lme.service.js';
+import { getCurrentPrice } from './lme.service.js';
 import type {
   CreateTransactionInput,
   ListTransactionsQuery,
@@ -340,7 +340,7 @@ export async function getValuation(id: string, actor: AuthenticatedUser) {
 
   const lmePrice = await getCurrentPrice();
   const goldWeightFine = Number(tx.goldWeightFine);
-  const grossValueUsd = (goldWeightFine / TROY_OZ_PER_GRAM) * lmePrice.priceUsdPerTroyOz;
+  const grossValueUsd = (goldWeightFine / 1000) * lmePrice.priceUsdPerKg;
   const estimatedCosts = tx.costItems.reduce(
     (sum, c) => sum + (c.estimatedUsd ? Number(c.estimatedUsd) : 0),
     0,
@@ -353,7 +353,7 @@ export async function getValuation(id: string, actor: AuthenticatedUser) {
   return {
     transactionId: id,
     goldWeightFine,
-    lmeSpotPrice: lmePrice.priceUsdPerTroyOz,
+    lmeSpotPrice: lmePrice.priceUsdPerKg,
     grossValueUsd: Number(grossValueUsd.toFixed(2)),
     estimatedCosts: Number(estimatedCosts.toFixed(2)),
     estimatedAgentFee: Number(estimatedAgentFee.toFixed(2)),

@@ -15,7 +15,7 @@ const STALE_THRESHOLD_MS = 5 * 60 * 1000; // 5 minutes
 // ---------------------------------------------------------------------------
 
 export interface LivePrice {
-  priceUsdPerTroyOz: number;
+  priceUsdPerKg: number;
   priceType: string;
   source: string;
   recordedAt: string;
@@ -25,7 +25,7 @@ export interface LivePrice {
 }
 
 interface CachedPrice {
-  priceUsdPerTroyOz: number;
+  priceUsdPerKg: number;
   priceType: string;
   source: string;
   recordedAt: string;
@@ -66,7 +66,7 @@ export async function getCurrentLmePrice(): Promise<LivePrice> {
     const ageMs = now.getTime() - latest.recordedAt.getTime();
     const isStale = ageMs > STALE_THRESHOLD_MS;
     return {
-      priceUsdPerTroyOz: Number(latest.priceUsdPerTroyOz),
+      priceUsdPerKg: Number(latest.priceUsdPerKg),
       priceType: latest.priceType,
       source: latest.source,
       recordedAt: latest.recordedAt.toISOString(),
@@ -78,7 +78,7 @@ export async function getCurrentLmePrice(): Promise<LivePrice> {
   // 3. Hardcoded fallback
   logger.warn('No LME price data available — returning hardcoded fallback');
   return {
-    priceUsdPerTroyOz: 2_350,
+    priceUsdPerKg: 107_500,
     priceType: 'SPOT',
     source: 'FALLBACK',
     recordedAt: now.toISOString(),

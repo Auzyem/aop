@@ -71,17 +71,17 @@ export default function PriceLockPage({ params }: { params: Promise<{ txnId: str
   // Auto-fill custom price when SPOT is selected
   useEffect(() => {
     if (priceType === 'SPOT' && currentPrice) {
-      setCustomPrice(currentPrice.priceUsdPerTroyOz.toFixed(2));
+      setCustomPrice(currentPrice.priceUsdPerKg.toFixed(2));
     }
   }, [priceType, currentPrice]);
 
-  const spotPrice = currentPrice?.priceUsdPerTroyOz ?? 0;
+  const spotPrice = currentPrice?.priceUsdPerKg ?? 0;
   const effectivePrice =
     priceType === 'SPOT' ? parseFloat(customPrice) || spotPrice : parseFloat(customPrice) || 0;
 
   const goldWeightFineKg = tx ? Number((tx as Record<string, unknown>).goldWeightFine ?? 0) : 0;
   const goldWeightFineOz = goldWeightFineKg * KG_TO_TROY_OZ;
-  const grossValue = goldWeightFineOz * effectivePrice;
+  const grossValue = goldWeightFineKg * effectivePrice;
 
   const isPriceAdjusted =
     priceType === 'SPOT' && parseFloat(customPrice) !== spotPrice && parseFloat(customPrice) > 0;

@@ -464,7 +464,7 @@ describe('PriceHistoryQuerySchema — FORWARD price type', () => {
 
 const mockPriceRecord = {
   id: 'price-1',
-  priceUsdPerTroyOz: 2450.5,
+  priceUsdPerKg: 78_783,
   priceType: 'SPOT',
   source: 'METALS_DEV',
   recordedAt: new Date('2026-03-22T10:00:00Z'),
@@ -516,7 +516,7 @@ describe('GET /api/v1/lme/price/current', () => {
 
     expect(res.status).toBe(200);
     expect(res.body.data).toMatchObject({
-      priceUsdPerTroyOz: 2450.5,
+      priceUsdPerKg: 78_783,
       priceType: 'SPOT',
       source: 'METALS_DEV',
     });
