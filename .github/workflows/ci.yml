@@ -131,7 +131,7 @@ jobs:
           node -e "if (${TOTAL_COV} < 75) { console.error('Overall coverage below 75%'); process.exit(1); }"
 
       - name: Upload coverage to Codecov
-        uses: codecov/codecov-action@v4
+        uses: codecov/codecov-action@v6
         with:
           files: ./apps/api/coverage/lcov.info
           flags: unit
