@@ -170,6 +170,7 @@ function getMocks() {
         findUnique: jest.Mock;
       };
       auditEvent: { create: jest.Mock };
+      priceAlert: { create: jest.Mock; update: jest.Mock; findMany: jest.Mock };
     };
   };
   return { db };
