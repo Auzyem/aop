@@ -57,6 +57,7 @@ jest.mock('@aop/db', () => ({
     priceAlert: {
       create: jest.fn().mockResolvedValue({ id: 'alert-1' }),
       update: jest.fn().mockResolvedValue({}),
+      findMany: jest.fn().mockResolvedValue([]),
     },
   },
 }));
@@ -790,5 +791,114 @@ describe('GET /api/v1/lme/valuation/:txnId', () => {
       .set('Authorization', makeToken('TRADE_MANAGER'));
 
     expect(res.status).toBe(404);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// GET /api/v1/lme/alerts
+// ---------------------------------------------------------------------------
+
+describe('GET /api/v1/lme/alerts', () => {
+  it('returns empty array when no alerts', async () => {
+    const { db } = getMocks();
+    db.prisma.priceAlert.findMany.mockResolvedValue([]);
+
+    const res = await request(app)
+      .get('/api/v1/lme/alerts')
+      .set('Authorization', makeToken('TRADE_MANAGER'));
+
+    expect(res.status).toBe(200);
+    expect(res.body.data).toEqual([]);
+  });
+
+  it('maps alert fields correctly', async () => {
+    const { db } = getMocks();
+    db.prisma.priceAlert.findMany.mockResolvedValue([
+      {
+        id: 'alert-1',
+        transactionId: 'txn-1',
+        referencePriceUsd: '2400.00',
+        newPriceUsd: '2450.00',
+        changePct: '2.08',
+        direction: 'UP',
+        alertedAt: new Date('2026-04-20T10:00:00Z'),
+      },
+    ]);
+
+    const res = await request(app)
+      .get('/api/v1/lme/alerts')
+      .set('Authorization', makeToken('TRADE_MANAGER'));
+
+    expect(res.status).toBe(200);
+    expect(res.body.data[0]).toMatchObject({
+      id: 'alert-1',
+      transactionId: 'txn-1',
+      originalPrice: 2400,
+      currentPrice: 2450,
+      direction: 'UP',
+    });
+  });
+});
+
+// ---------------------------------------------------------------------------
+// GET /api/v1/lme/transactions/awaiting-lock
+// ---------------------------------------------------------------------------
+
+describe('GET /api/v1/lme/transactions/awaiting-lock', () => {
+  it('returns transactions with unlocked price', async () => {
+    const { db } = getMocks();
+    db.prisma.transaction.findMany.mockResolvedValue([
+      {
+        id: 'txn-1',
+        phase: 'PHASE_2',
+        createdAt: new Date('2026-04-01T00:00:00Z'),
+        goldWeightFine: '10.5',
+        goldWeightGross: '11.0',
+        client: { fullName: 'Test Client' },
+      },
+    ]);
+
+    const res = await request(app)
+      .get('/api/v1/lme/transactions/awaiting-lock')
+      .set('Authorization', makeToken('TRADE_MANAGER'));
+
+    expect(res.status).toBe(200);
+    expect(res.body.data[0]).toMatchObject({
+      id: 'txn-1',
+      phase: 'PHASE_2',
+      goldWeightFine: 10.5,
+    });
+  });
+});
+
+// ---------------------------------------------------------------------------
+// GET /api/v1/lme/refinery/pipeline
+// ---------------------------------------------------------------------------
+
+describe('GET /api/v1/lme/refinery/pipeline', () => {
+  it('returns phase 4 and 5 transactions', async () => {
+    const { db } = getMocks();
+    db.prisma.transaction.findMany.mockResolvedValue([
+      {
+        id: 'txn-2',
+        phase: 'PHASE_4',
+        status: 'ACTIVE',
+        goldWeightFine: '8.0',
+        client: { fullName: 'Refinery Client' },
+        refinery: { name: 'Gold Refinery Ltd' },
+      },
+    ]);
+
+    const res = await request(app)
+      .get('/api/v1/lme/refinery/pipeline')
+      .set('Authorization', makeToken('TRADE_MANAGER'));
+
+    expect(res.status).toBe(200);
+    expect(res.body.data[0]).toMatchObject({
+      id: 'txn-2',
+      phase: 'PHASE_4',
+      deliveryStatus: 'ACTIVE',
+      refineryName: 'Gold Refinery Ltd',
+    });
   });
 });
