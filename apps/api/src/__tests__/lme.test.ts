@@ -728,7 +728,7 @@ describe('GET /api/v1/lme/dashboard', () => {
       .set('Authorization', makeToken('TRADE_MANAGER'));
 
     expect(res.status).toBe(200);
-    expect(res.body.data).toHaveProperty('currentPrice');
+    expect(res.body.data).toHaveProperty('currentPrices');
     expect(res.body.data).toHaveProperty('activeTransactions');
   });
 
