@@ -57,6 +57,7 @@ export function NewClientWizard({ open, onClose }: Props) {
   const [uploading, setUploading] = useState<DocType | null>(null);
   const [screening, setScreening] = useState<{ outcome: string; hitCount?: number } | null>(null);
   const [screeningLoading, setScreeningLoading] = useState(false);
+  const [submitError, setSubmitError] = useState<string | null>(null);
   const [sanctionMode, setSanctionMode] = useState<'auto' | 'skip' | 'manual'>('auto');
   const [manualOutcome, setManualOutcome] = useState<'CLEAR' | 'HIT' | 'POSSIBLE_MATCH'>('CLEAR');
 
@@ -84,10 +85,10 @@ export function NewClientWizard({ open, onClose }: Props) {
 
   async function handleSubmit() {
     setScreeningLoading(true);
+    setSubmitError(null);
     try {
       const client = await createClient.mutateAsync(details);
 
-      // Upload all queued KYC documents
       for (const [docType, file] of Object.entries(files)) {
         if (file) {
           const doc = await uploadKycDocument(client.id, docType, file as File);
@@ -106,9 +107,11 @@ export function NewClientWizard({ open, onClose }: Props) {
         return;
       }
 
-      // auto: call actual screening API
       const res = await runSanctionsScreen(client.id);
       setScreening({ outcome: res.outcome, hitCount: res.hitCount });
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : 'Submission failed. Please try again.';
+      setSubmitError(msg);
     } finally {
       setScreeningLoading(false);
     }
@@ -120,6 +123,7 @@ export function NewClientWizard({ open, onClose }: Props) {
     setFiles({});
     setUploadedIds({});
     setScreening(null);
+    setSubmitError(null);
     setSanctionMode('auto');
     setManualOutcome('CLEAR');
     onClose();
@@ -517,6 +521,21 @@ export function NewClientWizard({ open, onClose }: Props) {
                   </div>
                 )}
               </div>
+              {submitError && (
+                <div className="rounded-lg bg-red-50 border border-red-200 px-4 py-3 text-sm text-red-700">
+                  {submitError}
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* ── Loading: client creation + doc upload phase ── */}
+          {screeningLoading && !screening && (
+            <div className="flex flex-col items-center justify-center py-10 space-y-3">
+              <div className="w-14 h-14 border-4 border-gold border-t-transparent rounded-full animate-spin" />
+              <p className="text-sm text-gray-600 font-medium">
+                Creating client &amp; uploading documents…
+              </p>
             </div>
           )}
 

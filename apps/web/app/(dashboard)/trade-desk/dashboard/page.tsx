@@ -114,7 +114,12 @@ export default function TradeDeskDashboardPage() {
 
         {/* Today's stats */}
         <div className="grid grid-cols-2 lg:grid-cols-5 gap-4">
-          <StatTile label="Current Spot" value={spot ? usd(spot) : '—'} sub="/toz" accent />
+          <StatTile
+            label="Current Spot"
+            value={spot ? usd(spot) : '—'}
+            sub={spot ? `${usd(spot * KG_TO_TROY_OZ)}/kg` : '/toz'}
+            accent
+          />
           <StatTile label="AM Fix" value={amFix ? usd(amFix) : '—'} sub="London" />
           <StatTile label="PM Fix" value={pmFix ? usd(pmFix) : '—'} sub="London" />
           <StatTile label="7-Day High" value={high7d ? usd(high7d) : '—'} sub="/toz" />

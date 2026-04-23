@@ -29,7 +29,7 @@ export const CreateAgentSchema = z.object({
   companyName: z.string().min(1),
   countryCode: z.string().length(2),
   contactName: z.string().min(1),
-  contactEmail: z.string().email().optional(),
+  contactEmail: z.preprocess((v) => (v === '' ? undefined : v), z.string().email().optional()),
   licenceNo: z.string().min(1),
   bankName: z.string().optional(),
   bankAccount: z.string().optional(),

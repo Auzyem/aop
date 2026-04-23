@@ -3,8 +3,18 @@ import type { AuthenticatedUser } from '@aop/types';
 import { getCurrentLmePrice } from './lme-feed.service.js';
 
 export async function getTradeDeskDashboard(_actor: AuthenticatedUser) {
-  const [currentPrice, activeTxns, recentPrices] = await Promise.all([
+  const [currentPrice, latestAmFix, latestPmFix, activeTxns] = await Promise.all([
     getCurrentLmePrice(),
+    prisma.lmePriceRecord.findFirst({
+      where: { priceType: 'AM_FIX' },
+      orderBy: { recordedAt: 'desc' },
+      select: { priceUsdPerTroyOz: true, recordedAt: true },
+    }),
+    prisma.lmePriceRecord.findFirst({
+      where: { priceType: 'PM_FIX' },
+      orderBy: { recordedAt: 'desc' },
+      select: { priceUsdPerTroyOz: true, recordedAt: true },
+    }),
     prisma.transaction.findMany({
       where: { status: { notIn: ['CANCELLED', 'SETTLED'] } },
       include: {
@@ -13,14 +23,8 @@ export async function getTradeDeskDashboard(_actor: AuthenticatedUser) {
         costItems: { select: { estimatedUsd: true } },
       },
     }),
-    prisma.lmePriceRecord.findMany({
-      orderBy: { recordedAt: 'desc' },
-      take: 7 * 24 * 12, // ~7 days of 5-min intervals
-      select: { priceUsdPerTroyOz: true, recordedAt: true, priceType: true },
-    }),
   ]);
 
-  // Phase breakdown
   const phaseCount: Record<string, number> = {};
   let priceLocked = 0;
   let priceUnlocked = 0;
@@ -33,7 +37,6 @@ export async function getTradeDeskDashboard(_actor: AuthenticatedUser) {
     } else {
       priceUnlocked += 1;
     }
-    // Rough exposure: sum of estimated costs
     totalExposureUsd += tx.costItems.reduce(
       (s, c) => s + (c.estimatedUsd ? Number(c.estimatedUsd) : 0),
       0,
@@ -41,7 +44,11 @@ export async function getTradeDeskDashboard(_actor: AuthenticatedUser) {
   }
 
   return {
-    currentPrice,
+    currentPrices: {
+      SPOT: currentPrice ? { price: Number(currentPrice.priceUsdPerTroyOz) } : null,
+      AM_FIX: latestAmFix ? { price: Number(latestAmFix.priceUsdPerTroyOz) } : null,
+      PM_FIX: latestPmFix ? { price: Number(latestPmFix.priceUsdPerTroyOz) } : null,
+    },
     activeTransactions: {
       total: activeTxns.length,
       byPhase: phaseCount,
@@ -49,10 +56,5 @@ export async function getTradeDeskDashboard(_actor: AuthenticatedUser) {
       priceUnlocked,
     },
     totalExposureUsd,
-    priceHistory: recentPrices.map((r) => ({
-      price: Number(r.priceUsdPerTroyOz),
-      recordedAt: r.recordedAt.toISOString(),
-      priceType: r.priceType,
-    })),
   };
 }

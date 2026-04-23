@@ -1,4 +1,5 @@
 import type { Request, Response, NextFunction } from 'express';
+import { prisma } from '@aop/db';
 import { sendSuccess, sendError } from '../../lib/response.js';
 import { getCurrentLmePrice, getPriceHistory } from './lme-feed.service.js';
 import { lockTransactionPrice } from './lme-lock.service.js';
@@ -131,6 +132,104 @@ export async function getDashboardHandler(
   try {
     const result = await getTradeDeskDashboard(req.user!);
     sendSuccess(res, result);
+  } catch (err) {
+    next(err);
+  }
+}
+
+export async function getPriceAlertsHandler(
+  req: Request,
+  res: Response,
+  next: NextFunction,
+): Promise<void> {
+  try {
+    const alerts = await prisma.priceAlert.findMany({
+      orderBy: { alertedAt: 'desc' },
+      take: 50,
+    });
+    sendSuccess(
+      res,
+      alerts.map((a) => ({
+        id: a.id,
+        transactionId: a.transactionId,
+        originalPrice: Number(a.referencePriceUsd),
+        currentPrice: Number(a.newPriceUsd),
+        changePct: Number(a.changePct),
+        direction: a.direction,
+        alertedAt: a.alertedAt.toISOString(),
+      })),
+    );
+  } catch (err) {
+    next(err);
+  }
+}
+
+export async function getTransactionsAwaitingLockHandler(
+  req: Request,
+  res: Response,
+  next: NextFunction,
+): Promise<void> {
+  try {
+    const txns = await prisma.transaction.findMany({
+      where: { lmePriceLocked: null, status: { notIn: ['CANCELLED', 'SETTLED'] } },
+      orderBy: { createdAt: 'asc' },
+      take: 50,
+      select: {
+        id: true,
+        phase: true,
+        createdAt: true,
+        goldWeightFine: true,
+        goldWeightGross: true,
+        client: { select: { fullName: true } },
+      },
+    });
+    sendSuccess(
+      res,
+      txns.map((t) => ({
+        ...t,
+        goldWeightFine: t.goldWeightFine ? Number(t.goldWeightFine) : null,
+        goldWeightGross: Number(t.goldWeightGross),
+        createdAt: t.createdAt.toISOString(),
+      })),
+    );
+  } catch (err) {
+    next(err);
+  }
+}
+
+export async function getRefineryPipelineHandler(
+  req: Request,
+  res: Response,
+  next: NextFunction,
+): Promise<void> {
+  try {
+    const txns = await prisma.transaction.findMany({
+      where: {
+        phase: { in: ['PHASE_4', 'PHASE_5'] },
+        status: { notIn: ['CANCELLED', 'SETTLED'] },
+      },
+      orderBy: { updatedAt: 'desc' },
+      take: 50,
+      select: {
+        id: true,
+        phase: true,
+        status: true,
+        goldWeightFine: true,
+        client: { select: { fullName: true } },
+        refinery: { select: { name: true } },
+      },
+    });
+    sendSuccess(
+      res,
+      txns.map((t) => ({
+        id: t.id,
+        phase: t.phase,
+        deliveryStatus: t.status,
+        goldWeightFine: t.goldWeightFine ? Number(t.goldWeightFine) : null,
+        refineryName: t.refinery?.name ?? null,
+        client: t.client,
+      })),
+    );
   } catch (err) {
     next(err);
   }

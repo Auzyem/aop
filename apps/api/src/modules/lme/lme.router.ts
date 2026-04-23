@@ -10,6 +10,9 @@ import {
   updateRefineryHandler,
   getValuationHandler,
   getDashboardHandler,
+  getPriceAlertsHandler,
+  getTransactionsAwaitingLockHandler,
+  getRefineryPipelineHandler,
 } from './lme.controller.js';
 
 // TRADE_DESK → TRADE_MANAGER
@@ -73,3 +76,16 @@ lmeRouter.get(
   ...requireRole('SUPER_ADMIN', 'ADMIN', 'COMPLIANCE_OFFICER', 'TRADE_MANAGER', 'OPERATIONS'),
   getValuationHandler,
 );
+
+// GET /lme/alerts
+lmeRouter.get('/alerts', ...requireRole(...ALL_ROLES), getPriceAlertsHandler);
+
+// GET /lme/transactions/awaiting-lock
+lmeRouter.get(
+  '/transactions/awaiting-lock',
+  ...requireRole(...ALL_ROLES),
+  getTransactionsAwaitingLockHandler,
+);
+
+// GET /lme/refinery/pipeline
+lmeRouter.get('/refinery/pipeline', ...requireRole(...ALL_ROLES), getRefineryPipelineHandler);
