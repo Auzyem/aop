@@ -216,10 +216,15 @@ describe('POST /api/v1/clients/:id/kyc/documents', () => {
     expect(res.body.error.code).toBe('VALIDATION_ERROR');
   });
 
-  it('returns 403 for ADMIN role', async () => {
+  it('returns 403 for VIEWER role', async () => {
+    const viewerToken = jwtLib.signAccessToken({
+      id: 'v-1',
+      email: 'viewer@aop.local',
+      role: 'VIEWER',
+    });
     const res = await request(app)
       .post('/api/v1/clients/client-abc/kyc/documents')
-      .set('Authorization', `Bearer ${adminToken()}`)
+      .set('Authorization', `Bearer ${viewerToken}`)
       .field('documentType', 'NATIONAL_ID')
       .attach('file', Buffer.from('pdf'), { filename: 'id.pdf', contentType: 'application/pdf' });
 
