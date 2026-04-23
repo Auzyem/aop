@@ -275,29 +275,26 @@ describe('checkPriceAlertThreshold (pure)', () => {
 // ===========================================================================
 
 describe('computeValuation (pure)', () => {
-  const TROY_OZ_PER_GRAM = 31.1035;
-
-  it('standard: 10kg fine gold @ $2500/toz', () => {
-    // 10 kg = 10000 g
+  it('standard: 10 kg fine gold @ $80_000/kg', () => {
     const fineGrams = 10000;
-    const pricePerTroyOz = 2500;
+    const pricePerKg = 80_000;
     const companyFeeRate = 0.015;
     const totalCosts = 500;
 
     const result = computeValuation({
       goldWeightFineGrams: fineGrams,
-      lmePricePerTroyOz: pricePerTroyOz,
+      lmePricePerKg: pricePerKg,
       totalEstimatedCostsUsd: totalCosts,
       companyFeeRate,
     });
 
-    const expectedTroyOz = fineGrams / TROY_OZ_PER_GRAM;
-    const expectedGross = expectedTroyOz * pricePerTroyOz;
+    const expectedFineWeightKg = fineGrams / 1000;
+    const expectedGross = expectedFineWeightKg * pricePerKg;
     const expectedFee = expectedGross * companyFeeRate;
     const expectedNet = expectedGross - totalCosts - expectedFee;
 
     expect(result.fineWeightGrams).toBe(fineGrams);
-    expect(result.fineWeightTroyOz).toBeCloseTo(expectedTroyOz, 4);
+    expect(result.fineWeightKg).toBeCloseTo(expectedFineWeightKg, 4);
     expect(result.grossValueUsd).toBeCloseTo(expectedGross, 2);
     expect(result.companyFeeUsd).toBeCloseTo(expectedFee, 2);
     expect(result.estimatedNetUsd).toBeCloseTo(expectedNet, 2);
@@ -305,18 +302,19 @@ describe('computeValuation (pure)', () => {
   });
 
   it('zero costs: net = gross - companyFee', () => {
-    const fineGrams = 31.1035; // exactly 1 troy oz
-    const pricePerTroyOz = 2000;
+    const fineGrams = 31.1035; // ≈ 1 troy oz = 0.031 kg
+    const pricePerKg = 64_302; // ≈ $2000/toz
     const companyFeeRate = 0.01;
 
     const result = computeValuation({
       goldWeightFineGrams: fineGrams,
-      lmePricePerTroyOz: pricePerTroyOz,
+      lmePricePerKg: pricePerKg,
       totalEstimatedCostsUsd: 0,
       companyFeeRate,
     });
 
-    const gross = pricePerTroyOz; // 1 troy oz
+    const fineWeightKg = fineGrams / 1000;
+    const gross = fineWeightKg * pricePerKg;
     const fee = gross * companyFeeRate;
     expect(result.grossValueUsd).toBeCloseTo(gross, 2);
     expect(result.estimatedNetUsd).toBeCloseTo(gross - fee, 2);
@@ -324,50 +322,50 @@ describe('computeValuation (pure)', () => {
 
   it('high refinery charge (0.5% as companyFeeRate) deducts correctly', () => {
     const fineGrams = 100;
-    const pricePerTroyOz = 3000;
-    const highFeeRate = 0.005; // 0.5%
+    const pricePerKg = 96_000; // ≈ $3000/toz
+    const highFeeRate = 0.005;
     const totalCosts = 0;
 
     const result = computeValuation({
       goldWeightFineGrams: fineGrams,
-      lmePricePerTroyOz: pricePerTroyOz,
+      lmePricePerKg: pricePerKg,
       totalEstimatedCostsUsd: totalCosts,
       companyFeeRate: highFeeRate,
     });
 
-    const gross = (fineGrams / TROY_OZ_PER_GRAM) * pricePerTroyOz;
+    const gross = (fineGrams / 1000) * pricePerKg;
     expect(result.companyFeeUsd).toBeCloseTo(gross * highFeeRate, 4);
   });
 
   it('refinery tariff + assay fee combined via totalEstimatedCostsUsd', () => {
     const fineGrams = 200;
-    const pricePerTroyOz = 2400;
+    const pricePerKg = 77_162; // ≈ $2400/toz
     const refiningTariff = 150;
     const assayFee = 75;
     const totalCosts = refiningTariff + assayFee; // 225
 
     const result = computeValuation({
       goldWeightFineGrams: fineGrams,
-      lmePricePerTroyOz: pricePerTroyOz,
+      lmePricePerKg: pricePerKg,
       totalEstimatedCostsUsd: totalCosts,
       companyFeeRate: 0.015,
     });
 
     expect(result.totalEstimatedCostsUsd).toBe(225);
-    const gross = (fineGrams / TROY_OZ_PER_GRAM) * pricePerTroyOz;
+    const gross = (fineGrams / 1000) * pricePerKg;
     const fee = gross * 0.015;
     expect(result.estimatedNetUsd).toBeCloseTo(gross - 225 - fee, 2);
   });
 
-  it('very small weight (0.001 kg = 1 g) — no arithmetic errors', () => {
+  it('very small weight (1 g) — no arithmetic errors', () => {
     const result = computeValuation({
       goldWeightFineGrams: 1,
-      lmePricePerTroyOz: 2500,
+      lmePricePerKg: 80_000,
       totalEstimatedCostsUsd: 0,
       companyFeeRate: 0.015,
     });
 
-    expect(result.fineWeightTroyOz).toBeCloseTo(1 / TROY_OZ_PER_GRAM, 6);
+    expect(result.fineWeightKg).toBeCloseTo(1 / 1000, 6);
     expect(result.grossValueUsd).toBeGreaterThan(0);
     expect(isFinite(result.estimatedNetUsd)).toBe(true);
   });
