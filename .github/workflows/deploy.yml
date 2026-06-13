@@ -55,7 +55,7 @@ jobs:
       STAGING_API_URL: ${{ secrets.STAGING_API_URL }}
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
         with:
           # Check out the commit that CI built, not the deploy workflow's trigger commit
           ref: ${{ github.event.workflow_run.head_sha || github.sha }}
@@ -245,7 +245,7 @@ jobs:
       PROD_URL: ${{ secrets.PROD_URL }}
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
 
       - name: Configure AWS credentials (OIDC)
         uses: aws-actions/configure-aws-credentials@v4
